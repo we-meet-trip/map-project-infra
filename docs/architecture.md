@@ -70,6 +70,7 @@
 | 공공·지도 API(기상청·한국환경공단·한국관광공사·공공데이터포털·국토교통부·서울특별시·카카오·네이버·Google·ODsay) | hub(관리 콘솔은 상태 점검) | 키가 없으면 부르지 않고 스텁으로 답한다 |
 | OSRM | hub | 주소를 채우고 routing 프로필을 켤 때만 |
 | 위키백과 | yolo | 연락처(`YOLO_WIKIPEDIA_CONTACT`)를 넣을 때만 |
+| LangSmith | agent | 실행 기록을 보내지 않는다. `AGENT_LANGSMITH_TRACING=true` 와 키를 넣을 때만 |
 
 ## 타임아웃과 한도 (compose·본보기 기본값)
 
