@@ -11,9 +11,15 @@
   통신      — 서비스 사이에 무엇이 흐르는지. 응답이 같아도 흐르는 것은 다를 수 있다
   기록      — 로그에 좌표가 남는지. 남아도 아무 증상이 없다
 
+전제: 시험 계정 시더가 켜진 스택이어야 한다 — 로그인할 계정이 필요하다.
+  시험 스택(./scripts/make-test-env.sh 가 만든 .env.test)은 시더가 켜져 있다.
+  빠른 시작 스택(.env)은 시더가 꺼져 있으므로, 쓰려면 .env 에
+  USER_TESTER_SEED_ENABLED=true 와 USER_TESTER_SEED_PASSWORD=<값> 을 넣고 user 를 다시 띄운다.
+값은 모두 합성이다(장소 이름·주소·좌표). 실제 장소를 쓰지 않는다.
+
 사용:
     ./scripts/e2e_full.py --env test
-    ./scripts/e2e_full.py --env prod --base http://127.0.0.1:8090
+    ./scripts/e2e_full.py --env local --base http://127.0.0.1:8090
 """
 from __future__ import annotations
 
@@ -116,7 +122,7 @@ def env_value(path: str, key: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--env", choices=["test", "prod"], default="test")
+    ap.add_argument("--env", choices=["test", "local"], default="test")
     ap.add_argument("--base", default=None)
     args = ap.parse_args()
 
@@ -139,7 +145,8 @@ def main() -> int:
     # 있다. 없으면 여기서 멈추는 편이 낫다.
     password = env_value(env_file, "USER_TESTER_SEED_PASSWORD")
     if not password:
-        print(f"{env_file} 에 USER_TESTER_SEED_PASSWORD 가 없다", file=sys.stderr)
+        print(f"{env_file} 에 USER_TESTER_SEED_PASSWORD 가 없다 — 시험 계정 시더를 켠 스택이 필요하다"
+              " (USER_TESTER_SEED_ENABLED=true 와 비밀번호를 넣고 user 를 다시 띄운다)", file=sys.stderr)
         return 1
     auth_on = env_value(env_file, "USER_AUTH_ENFORCED").lower() == "true"
     wire_on = bool(env_value(env_file, "MAP_PROJECT_LOCATION_WIRE_KEY"))
@@ -210,12 +217,11 @@ def main() -> int:
     if not token:
         return report()
 
+    # 사용자 일정은 누구의 것인지 알아야 하므로, 인증 강제가 꺼져 있어도(필터가 열려
+    # 있어도) 사용자 없이 부르면 컨트롤러가 401 을 준다.
     status, _ = http("GET", f"{base}/api/v1/schedules")
-    if auth_on:
-        check("토큰 없이는 막힌다", status == 401, f"status={status}")
-    else:
-        check("인증이 꺼져 있어 토큰 없이도 열린다", status == 200,
-              f"status={status} (운영에서는 켠다)")
+    check("토큰 없이는 사용자 일정이 열리지 않는다", status == 401,
+          f"status={status} (인증 강제 {'켜짐' if auth_on else '꺼짐'})")
 
     status, _ = http("GET", f"{base}/api/v1/schedules", token)
     check("토큰이 있으면 열린다", status == 200, f"status={status}")
@@ -250,7 +256,7 @@ def main() -> int:
     if sid:
         stored = psql(
             f"select payload::text from user_service.schedules where schedule_id={sid}")
-        leaked = "37.4987" in stored or "광안리" in stored
+        leaked = "37.4987" in stored or "합성 장소" in stored
         if store_on:
             check("저장된 본문에 평문 좌표가 없다", not leaked,
                   "봉투" if stored.startswith('{"v"') or '"ct"' in stored else "평문")
@@ -298,11 +304,11 @@ def main() -> int:
                               "places": [place], "visit_order": [1], "legs": []},
                              ensure_ascii=False)
         # 본문을 인자에 그대로 실어 agent 자신의 코드로 감싼다.
-        token2 = sh("docker", "exec", f"{prefix}-agent-1", "python", "-c",
-                    f"from app.crypto import location_seal;"
+        token2 = sh("docker", "exec", agent, "python", "-c",
+                    f"from map_project_agent.crypto import location_seal;"
                     f"print(location_seal.seal({{'payload': {payload!r}}}))")
         check("agent 가 만든 봉투에 좌표가 없다",
-              bool(token2) and "37.4987" not in token2 and "광안리" not in token2)
+              bool(token2) and "37.4987" not in token2 and "합성 장소" not in token2)
         if token2:
             rcli("-n", "2",
                  "XADD", "agent:jobs:done", "*", "job_id", job2,
@@ -313,7 +319,7 @@ def main() -> int:
             check("BFF 가 그 봉투를 열어 저장한다", bool(saved_draft))
             if store_on:
                 check("저장된 초안에도 평문 좌표가 없다",
-                      "37.4987" not in saved_draft and "광안리" not in saved_draft)
+                      "37.4987" not in saved_draft and "합성 장소" not in saved_draft)
 
     # ── 기록 ────────────────────────────────────────────────────────────
     section("기록")
@@ -362,7 +368,7 @@ def main() -> int:
     # 방금 실제로 보낸 좌표를 찾는다. 다른 좌표를 찾으면 이 검사는 아무것도
     # 보지 않으면서 늘 통과한다 — 보낸 적 없는 값이 로그에 있을 리 없다.
     check("BFF 기록에 좌표가 없다",
-          not re.search(r"35\.1587|129\.1604|35\.1532|129\.1187|광안리", user_log))
+          not re.search(r"37\.4991|127\.0281|37\.4987|127\.0273|합성 장소", user_log))
 
     return report()
 
