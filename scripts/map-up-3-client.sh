@@ -8,8 +8,6 @@ INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAP_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 ADB="$HOME/Library/Android/sdk/platform-tools/adb"
 EMU_ID="${EMU_ID:-Pixel_7}"
-# 지도 키: 명시 환경변수 우선, 없으면 infra/.env 의 NAVER_CLIENT_ID(없으면 빈 값 → 타일만 미인증).
-NAVER_KEY="${NAVER_MAP_CLIENT_ID:-$(grep -E '^NAVER_CLIENT_ID=' "$INFRA_DIR/.env" 2>/dev/null | cut -d= -f2-)}"
 
 # 앱은 호스트의 BFF 를 10.0.2.2 로 호출하므로 BFF 준비를 선검사.
 if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/actuator/health)" != "200" ]; then
@@ -35,10 +33,8 @@ else
   done
 fi
 
-echo "== flutter run (API_BASE_URL=http://10.0.2.2:8080) — 종료 q =="
-[ -z "$NAVER_KEY" ] && echo "  (NAVER 지도 키 없음 → 타일 미인증, 경로/마커는 표시)"
+echo "== flutter run (CLIENT_API_BASE_URL=http://10.0.2.2:8080) — 종료 q =="
 cd "$MAP_ROOT/map-project-client"
 # exec 로 현재 셸을 대체 → q/Ctrl+C 가 flutter 프로세스에 직접 전달된다.
 exec flutter run -d emulator-5554 \
-  --dart-define=API_BASE_URL=http://10.0.2.2:8080 \
-  --dart-define=NAVER_MAP_CLIENT_ID="$NAVER_KEY"
+  --dart-define=CLIENT_API_BASE_URL=http://10.0.2.2:8080
