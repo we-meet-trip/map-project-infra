@@ -17,8 +17,8 @@
 services:
   admin:
     build: !reset null
-    image: ${IMAGE_REGISTRY:?이미지를 받아올 곳을 정해야 한다}/map-service-admin:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${IMAGE_REGISTRY:?이미지를 받아올 곳을 정해야 한다}/map-project-admin:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
 
   admin-web:
     build: !reset null
-    image: ${IMAGE_REGISTRY}/map-service-admin-web:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${IMAGE_REGISTRY}/map-project-admin-web:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}

@@ -165,13 +165,13 @@ async def main():
     # 예비값을 두지 않는다. 코드에 남은 비밀번호는 저장소에 남고,
     # 시험 계정이 켜진 스택이 고정 주소로 열리면 그것만으로 들어올 수 있다.
     ap.add_argument("--password", required=True)
-    ap.add_argument("--redis", default="map-service-redis",
+    ap.add_argument("--redis", default="map-project-redis",
                     help="초안을 심을 redis 컨테이너 이름")
     ap.add_argument("--redis-db", default="4")
     # 저장소에 비밀번호가 걸린 스택이면 환경변수나 이 인자로 준다.
     ap.add_argument("--redis-password",
                     default=os.environ.get("REDIS_PASSWORD", ""))
-    ap.add_argument("--pg", default="map-service-postgres",
+    ap.add_argument("--pg", default="map-project-postgres",
                     help="추천 작업 주인을 심을 postgres 컨테이너 이름")
     ap.add_argument("--pg-user", default="map")
     ap.add_argument("--pg-db", default="map")

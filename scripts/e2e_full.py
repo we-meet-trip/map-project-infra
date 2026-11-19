@@ -119,13 +119,13 @@ def main() -> int:
     is_test = args.env == "test"
     env_file = "./.env.test" if is_test else "./.env"
     base = args.base or ("http://127.0.0.1:8290" if is_test else "http://127.0.0.1:8090")
-    prefix = "map-test" if is_test else "map-service"
-    pg = f"{prefix}-postgres-1" if is_test else "map-service-postgres"
-    redis = f"{prefix}-redis-1" if is_test else "map-service-redis"
-    proxy = f"{prefix}-proxy-1" if is_test else "map-service-proxy"
-    hub = f"{prefix}-hub-1" if is_test else "map-service-hub"
-    user = f"{prefix}-user-1" if is_test else "map-service-user"
-    agent = f"{prefix}-agent-1" if is_test else "map-service-agent"
+    prefix = "map-test" if is_test else "map-project"
+    pg = f"{prefix}-postgres-1" if is_test else "map-project-postgres"
+    redis = f"{prefix}-redis-1" if is_test else "map-project-redis"
+    proxy = f"{prefix}-proxy-1" if is_test else "map-project-proxy"
+    hub = f"{prefix}-hub-1" if is_test else "map-project-hub"
+    user = f"{prefix}-user-1" if is_test else "map-project-user"
+    agent = f"{prefix}-agent-1" if is_test else "map-project-agent"
 
     db = env_value(env_file, "POSTGRES_DB") or "map"
     db_user = env_value(env_file, "POSTGRES_USER") or "map"
@@ -191,7 +191,7 @@ def main() -> int:
 
     applied = psql("select max(version) from user_service.flyway_schema_history")
     source = sh("bash", "-c",
-                "ls ../map-service-user/src/main/resources/db/migration/"
+                "ls ../map-project-user/src/main/resources/db/migration/"
                 " | sed -n 's/^V\\([0-9]*\\)__.*/\\1/p' | sort -n | tail -1")
     # 저장소가 코드보다 앞서 있으면 되돌린 배포에서 조용히 어긋난 채로 돈다.
     check("저장소 판이 코드와 같다", applied.strip() == source.strip(),
@@ -342,7 +342,7 @@ def main() -> int:
 
     # 카메라 서비스는 좌표가 가장 정확한 자리라 기록도 함께 본다.
     # 카카오 질의는 좌표를 x/y 로 실어 그 꼴도 같이 찾는다.
-    yolo_cid = f"{prefix}-yolo-1" if is_test else "map-service-yolo"
+    yolo_cid = f"{prefix}-yolo-1" if is_test else "map-project-yolo"
     yolo_up = sh("docker", "ps", "--filter", f"name={yolo_cid}",
                  "--format", "{{.Names}}")
     if yolo_up:

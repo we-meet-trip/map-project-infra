@@ -3,7 +3,7 @@
 # API_BASE_URL 을 호스트(에뮬레이터에서 10.0.2.2:8080)로 주입한다. 종료 q 또는 Ctrl+C.
 set -uo pipefail
 
-# INFRA_DIR = map-service-infra(.env). MAP_ROOT = 그 상위(형제 레포 map-service-client 접근용).
+# INFRA_DIR = map-project-infra(.env). MAP_ROOT = 그 상위(형제 레포 map-project-client 접근용).
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAP_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 ADB="$HOME/Library/Android/sdk/platform-tools/adb"
@@ -37,7 +37,7 @@ fi
 
 echo "== flutter run (API_BASE_URL=http://10.0.2.2:8080) — 종료 q =="
 [ -z "$NAVER_KEY" ] && echo "  (NAVER 지도 키 없음 → 타일 미인증, 경로/마커는 표시)"
-cd "$MAP_ROOT/map-service-client"
+cd "$MAP_ROOT/map-project-client"
 # exec 로 현재 셸을 대체 → q/Ctrl+C 가 flutter 프로세스에 직접 전달된다.
 exec flutter run -d emulator-5554 \
   --dart-define=API_BASE_URL=http://10.0.2.2:8080 \

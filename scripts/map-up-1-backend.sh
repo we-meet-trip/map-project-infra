@@ -5,7 +5,7 @@
 # 헬스 게이트 통과 후 종료(컨테이너는 detached 로 계속 실행).
 set -uo pipefail
 
-# INFRA_DIR = map-service-infra (compose/.env 소유). 스크립트 위치 기준이라 cwd 무관.
+# INFRA_DIR = map-project-infra (compose/.env 소유). 스크립트 위치 기준이라 cwd 무관.
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE=(docker compose -f "$INFRA_DIR/docker-compose.yml")
 ENVF="$INFRA_DIR/.env"

@@ -1,5 +1,5 @@
 -- =========================================================================
--- map-service-infra / postgres 초기화 스크립트
+-- map-project-infra / postgres 초기화 스크립트
 --
 -- postgres 컨테이너 entrypoint(`/docker-entrypoint-initdb.d`)가 첫 부팅 시
 -- 1회 실행한다. 멱등(idempotent) — CREATE IF NOT EXISTS 만 사용하므로

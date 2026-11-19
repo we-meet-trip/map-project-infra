@@ -4,12 +4,12 @@
 set -uo pipefail
 
 # 경로는 스크립트 위치 기준으로 계산(실행 cwd 무관).
-# INFRA_DIR = 이 파일의 상위 디렉터리 = map-service-infra (docker-compose.yml 소유).
+# INFRA_DIR = 이 파일의 상위 디렉터리 = map-project-infra (docker-compose.yml 소유).
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ADB="$HOME/Library/Android/sdk/platform-tools/adb"
-SERVICE_COMPOSE=(docker compose -p map-service -f "$INFRA_DIR/docker-compose.yml")
+SERVICE_COMPOSE=(docker compose -p map-project -f "$INFRA_DIR/docker-compose.yml")
 ADMIN_COMPOSE=(docker compose -p map-admin -f "$INFRA_DIR/docker-compose.admin.yml")
-APP_PKG="kr.mapservice.client"
+APP_PKGS=("map.project.client" "map.project.client.dev")
 cleanup_failed=0
 
 # 8080 은 토폴로지 A에서 Docker Desktop 백엔드가 대신 listen 할 수 있다. 따라서
@@ -19,7 +19,7 @@ is_map_host_bff_pid() {
   local pid="$1" command
   command="$(ps -ww -p "$pid" -o command= 2>/dev/null)" || return 1
   [[ "$command" == *"java"* ]] &&
-    [[ "$command" == *"map.service.user.ServiceUserApplication"* ]]
+    [[ "$command" == *"map.project.user.UserApplication"* ]]
 }
 
 echo "== [1/4] flutter run / 앱 종료 =="
@@ -27,7 +27,9 @@ echo "== [1/4] flutter run / 앱 종료 =="
 pkill -f "flutter_tools.snapshot" 2>/dev/null && echo "  flutter run 세션 종료" || echo "  flutter run 세션 없음"
 # 앱은 force-stop 만 한다(설치는 유지 → 다음 기동 시 재설치 불필요).
 if [ -x "$ADB" ]; then
-  "$ADB" -s emulator-5554 shell am force-stop "$APP_PKG" 2>/dev/null && echo "  앱 force-stop(설치 유지)" || true
+  for pkg in "${APP_PKGS[@]}"; do
+    "$ADB" -s emulator-5554 shell am force-stop "$pkg" 2>/dev/null && echo "  앱 force-stop: $pkg(설치 유지)" || true
+  done
 fi
 
 echo "== [2/4] 에뮬레이터 종료 =="
@@ -117,7 +119,7 @@ else
   fi
 
   # down 명령이 0이어도 프로젝트 컨테이너가 남으면 성공으로 보고하지 않는다.
-  for project in map-admin map-service; do
+  for project in map-admin map-project; do
     remaining="$(docker ps -a \
       --filter "label=com.docker.compose.project=$project" \
       --format '{{.Names}}' 2>/dev/null)"

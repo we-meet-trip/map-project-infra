@@ -111,7 +111,7 @@ services:
     security_opt: [no-new-privileges:true]
     <<: [*default-logging, *app-env]
     build:
-      context: ../map-service-admin
+      context: ../map-project-admin
     container_name: map-admin-api
     restart: unless-stopped
     # hub 와 같은 얼개의 파이썬 서버인데 일정 실행기가 없어 더 가볍다.
@@ -143,7 +143,7 @@ services:
     security_opt: [no-new-privileges:true]
     <<: *default-logging
     build:
-      context: ../map-service-admin/web
+      context: ../map-project-admin/web
     container_name: map-admin-web
     restart: unless-stopped
     depends_on:

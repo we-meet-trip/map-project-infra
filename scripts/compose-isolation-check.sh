@@ -126,7 +126,7 @@ import json,sys
 y=json.load(sys.stdin)['services']['yolo']
 if y.get('build'):
     print('카메라 갈래가 아직 만드는 자리를 들고 있다', file=sys.stderr); sys.exit(1)
-if 'map-service-yolo:' not in (y.get('image') or ''):
+if 'map-project-yolo:' not in (y.get('image') or ''):
     print('카메라 갈래에 받아올 이름이 없다', file=sys.stderr); sys.exit(1)
 " || exit 1
 

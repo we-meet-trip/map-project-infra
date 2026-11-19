@@ -131,7 +131,7 @@ done
   || no "생성 경로에 분당 상한이 걸린다" "12회 연속 429 없음"
 
 sec "9. 이번 작업 산출물이 실제로 쌓이는가"
-q() { docker exec map-service-postgres psql -h 127.0.0.1 -At -U map -d map -c "$1" 2>/dev/null; }
+q() { docker exec map-project-postgres psql -h 127.0.0.1 -At -U map -d map -c "$1" 2>/dev/null; }
 [ "$(q "SELECT count(*) FROM user_service.recommend_jobs WHERE source IS NOT NULL;")" -gt 0 ] \
   && ok "잡 출처(source)가 기록된다" || no "잡 출처(source)가 기록된다" "0건"
 if [ "${TRAINING_CAPTURE_ENABLED:-false}" = true ]; then
@@ -170,10 +170,10 @@ if [ -n "$SID" ]; then
 
   # 시작 시각은 처음 한 번만 새긴다. 두 번 눌러도 같아야 한다.
   code -X POST "${AUTH[@]}" "$BASE/api/v1/schedules/$SID/start" >/dev/null
-  first=$(docker exec map-service-postgres psql -h 127.0.0.1 -At -U map -d map \
+  first=$(docker exec map-project-postgres psql -h 127.0.0.1 -At -U map -d map \
           -c "SELECT started_at FROM user_service.schedules WHERE schedule_id=$SID;" 2>/dev/null)
   code -X POST "${AUTH[@]}" "$BASE/api/v1/schedules/$SID/start" >/dev/null
-  second=$(docker exec map-service-postgres psql -h 127.0.0.1 -At -U map -d map \
+  second=$(docker exec map-project-postgres psql -h 127.0.0.1 -At -U map -d map \
            -c "SELECT started_at FROM user_service.schedules WHERE schedule_id=$SID;" 2>/dev/null)
   [ -n "$first" ] && ok "따라가기 시작이 새겨진다 ($first)" \
     || no "따라가기 시작이 새겨진다" "started_at 비어 있음"
@@ -209,7 +209,7 @@ if [ -n "$tid" ]; then
   case ",202,200,409," in *",$rc,"*) ok "재탐색이 접수된다 ($rc)";; *) no "재탐색이 접수된다" "실제 $rc";; esac
   if [ "$rc" = "202" ] || [ "$rc" = "200" ]; then
     sleep 25
-    m=$(docker exec map-service-postgres psql -h 127.0.0.1 -At -U map -d map \
+    m=$(docker exec map-project-postgres psql -h 127.0.0.1 -At -U map -d map \
         -c "SELECT count(*) FROM user_service.recommend_jobs WHERE mode='research' AND parent_job_id='$tid';" 2>/dev/null)
     [ "${m:-0}" -gt 0 ] && ok "재탐색 잡이 원본과 이어진다 (parent_job_id)" \
       || no "재탐색 잡이 원본과 이어진다" "0건"

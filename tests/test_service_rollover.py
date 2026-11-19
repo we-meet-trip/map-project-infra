@@ -8,7 +8,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('service_rollover', ROOT/'scripts/service-rollover.py')
 roll = importlib.util.module_from_spec(spec); spec.loader.exec_module(roll)
-IMAGE = 'ghcr.io/we-meet-trip/map-service-hub@sha256:'+'a'*64
+IMAGE = 'registry.example/acme/map-project-hub@sha256:'+'a'*64
 IMAGE_ID = 'sha256:'+'b'*64
 BLUE = 'b'*64; GREEN = 'g'.replace('g','c')*64; NEW = 'd'*64; PROXY = 'e'*64
 PROBES = [('http://127.0.0.1:8090/healthz', 200)]
@@ -39,7 +39,8 @@ class ArgumentTests(unittest.TestCase):
         self.assertEqual(args[args.index('--network')+1], 'map-test_default')
 
     def test_a_mutable_or_foreign_image_is_refused(self):
-        for image in ('hub:latest', 'ghcr.io/other/map-service-hub@sha256:'+'a'*64):
+        for image in ('hub:latest', 'registry.example/acme/map-project-hub:latest',
+                      'registry.example/acme/other-hub@sha256:'+'a'*64):
             broken = config(); broken['services']['hub']['image'] = image
             with self.subTest(image=image), self.assertRaises(roll.RolloverError):
                 roll.service_config(broken, 'hub')

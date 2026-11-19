@@ -32,8 +32,10 @@ SERVICES = {
     'user': {'port': 8080, 'path': '/actuator/health', 'variable': 'bff_upstream'},
 }
 SUFFIX = '-rollover'
-LABEL = 'kr.mapservice.rollover'
-IMAGE = re.compile(r'ghcr\.io/we-meet-trip/map-service-[a-z]+@sha256:[a-f0-9]{64}')
+LABEL = 'map-project.rollover'
+# 받아올 곳은 사용자가 정한다(이 저장소는 이미지를 게시하지 않는다). 우리 서비스 이름과
+# 고정 다이제스트만 요구한다 — 판이 움직이는 태그로는 교체하지 않는다.
+IMAGE = re.compile(r'(?:[a-z0-9.-]+(?::[0-9]+)?/)?(?:[a-z0-9._-]+/)*map-project-[a-z]+@sha256:[a-f0-9]{64}')
 ID = re.compile(r'[a-f0-9]{64}')
 NAME = re.compile(r'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}')
 PROTECTED_RESERVE = 512 * 1024 ** 2
@@ -192,8 +194,8 @@ def create_args(name, project, service, image, entry, networks, stop=STOP_SECOND
     require(NAME.fullmatch(name), 'rollover_name_invalid')
     args = ['create', '--pull=never', '--name', name, '--restart=no', '--init',
             '--stop-timeout', str(stop),
-            '--label', f'{LABEL}=1', '--label', f'kr.mapservice.project={project}',
-            '--label', f'kr.mapservice.service={service}', '--log-driver=none',
+            '--label', f'{LABEL}=1', '--label', f'map-project.project={project}',
+            '--label', f'map-project.service={service}', '--log-driver=none',
             '--network', networks[0], *health_args(entry)]
     for key in sorted(entry.get('environment') or {}):
         args += ['--env', key]

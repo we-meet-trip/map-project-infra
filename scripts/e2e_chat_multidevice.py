@@ -154,12 +154,12 @@ def seed_draft(args, job_id, draft, email):
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8090")
-    ap.add_argument("--redis", default="map-service-redis")
+    ap.add_argument("--redis", default="map-project-redis")
     ap.add_argument("--redis-db", default="4")
     # 저장소에 비밀번호가 걸린 스택이면 환경변수나 이 인자로 준다.
     ap.add_argument("--redis-password",
                     default=os.environ.get("REDIS_PASSWORD", ""))
-    ap.add_argument("--pg", default="map-service-postgres",
+    ap.add_argument("--pg", default="map-project-postgres",
                     help="추천 작업 주인을 심을 postgres 컨테이너 이름")
     ap.add_argument("--pg-user", default="map")
     ap.add_argument("--pg-db", default="map")

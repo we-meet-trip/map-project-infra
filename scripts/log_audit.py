@@ -133,7 +133,7 @@ FOLD = {
         (r"GET /health .*200", "run", "상태 확인. 개수가 0 이 되면 그 자체가 신호다"),
         (r'INFO:\s+[\d.]+:\d+ - "(GET|POST) [^"]*" (2\d\d|3\d\d|40[0-4])',
          "any", "접근 기록. 5xx 는 위에서 실패로 센다"),
-        (r"YoloDetector loaded model=|yolo-vision-agent: initialized", "boot", "모델 적재 안내"),
+        (r"YoloDetector loaded model=|map-project-yolo: initialized", "boot", "모델 적재 안내"),
         (r"Ultralytics Settings|yolo settings|View Ultralytics", "boot", "모델 꾸러미가 처음 자리를 잡는 안내"),
         (r'WebSocket /ws/vision" \[accepted\]|connection (open|closed)', "any", "카메라 연결 오갔다"),
         (r"vision_ws: client (connected|disconnected)", "any", "카메라 연결 오갔다"),

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================
-# map-service-infra / postgres 초기화 — map_admin 읽기전용 역할 (admin 모니터링)
+# map-project-infra / postgres 초기화 — map_admin 읽기전용 역할 (admin 모니터링)
 #
 # postgres 컨테이너 entrypoint(/docker-entrypoint-initdb.d)가 최초 부팅 시
 # 00-create-schemas.sql 다음(사전 순)에 1회 실행한다.

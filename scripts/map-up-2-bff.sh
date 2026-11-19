@@ -3,7 +3,7 @@
 # 도커 백엔드의 "호스트 포트"(agent:8000/hub:8001/pg:5432/redis:16379)에 연결한다.
 set -uo pipefail
 
-# INFRA_DIR = map-service-infra(.env 소유). MAP_ROOT = 그 상위(형제 레포 map-service-user 접근용).
+# INFRA_DIR = map-project-infra(.env 소유). MAP_ROOT = 그 상위(형제 레포 map-project-user 접근용).
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAP_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 ENVF="$INFRA_DIR/.env"
@@ -47,6 +47,6 @@ export REDIS_HOST=localhost REDIS_PORT=16379
 export AGENT_BASE_URL=http://localhost:8000 HUB_BASE_URL=http://localhost:8001
 
 echo "== BFF bootRun(8080) — 'Started ServiceUserApplication' 출력 시 준비. 종료 Ctrl+C =="
-cd "$MAP_ROOT/map-service-user"
+cd "$MAP_ROOT/map-project-user"
 # exec 로 현재 셸을 대체 → Ctrl+C(SIGINT)가 gradle/JVM 에 직접 전달된다.
 exec ./gradlew bootRun --console=plain
