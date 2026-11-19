@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# MAP PoC Stage 3: Android 에뮬레이터 부팅 + 앱 실행(flutter run, 포그라운드).
-# API_BASE_URL 을 호스트(에뮬레이터에서 10.0.2.2:8080)로 주입한다. 종료 q 또는 Ctrl+C.
+# 로컬 기동 3단계: Android 에뮬레이터 부팅 + 앱 실행(flutter run, 포그라운드).
+# CLIENT_API_BASE_URL 을 호스트(에뮬레이터에서 10.0.2.2:8080)로 주입한다. 종료 q 또는 Ctrl+C.
 set -uo pipefail
 
 # INFRA_DIR = map-project-infra(.env). MAP_ROOT = 그 상위(형제 레포 map-project-client 접근용).
@@ -11,7 +11,7 @@ EMU_ID="${EMU_ID:-Pixel_7}"
 
 # 앱은 호스트의 BFF 를 10.0.2.2 로 호출하므로 BFF 준비를 선검사.
 if [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/actuator/health)" != "200" ]; then
-  echo "✗ BFF(8080) 미응답. 먼저 Stage 1·2(map-up-1-backend.sh, map-up-2-bff.sh) 실행."; exit 1
+  echo "✗ BFF(8080) 미응답. 먼저 1·2단계(map-up-1-backend.sh, map-up-2-bff.sh) 실행."; exit 1
 fi
 
 # 이미 부팅된 에뮬레이터가 있으면 재사용, 없으면 부팅.

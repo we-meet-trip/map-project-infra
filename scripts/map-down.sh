@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MAP PoC 스택 정리: flutter 세션 → 에뮬레이터 → 로컬 BFF(8080) →
+# 로컬 스택 정리: flutter 세션 → 에뮬레이터 → 로컬 BFF(8080) →
 # 도커 백엔드 순 정지. 데이터 볼륨(postgres/redis)은 보존한다.
 set -uo pipefail
 

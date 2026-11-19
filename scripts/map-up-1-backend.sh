@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# MAP PoC Stage 1: 도커 백엔드 기동(postgres·redis·hub·agent).
-# postgres·redis 를 먼저 띄운 뒤 --no-deps 로 hub·agent 만 기동한다(이미 뜬
-# 의존 컨테이너 재기동 방지).
+# 로컬 기동 1단계: 도커 백엔드 기동(postgres·redis·DB 준비 사슬·hub·agent).
 # 헬스 게이트 통과 후 종료(컨테이너는 detached 로 계속 실행).
 set -uo pipefail
 
@@ -10,72 +8,32 @@ INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE=(docker compose -f "$INFRA_DIR/docker-compose.yml")
 ENVF="$INFRA_DIR/.env"
 
-echo "== [0/5] 사전 점검 (Docker 데몬 · .env 키) =="
+echo "== [0/3] 사전 점검 (Docker 데몬 · .env) =="
 # Docker 데몬이 꺼져 있으면 이후 모든 compose 호출이 실패하므로 선제 차단.
 if ! docker info >/dev/null 2>&1; then
   echo "  ✗ Docker 데몬 꺼짐. Docker Desktop 실행 후 재시도: open -a Docker"; exit 1
 fi
-[ -f "$ENVF" ] || { echo "  ✗ $ENVF 없음. cp .env.example .env 후 키 입력."; exit 1; }
-# 부팅 필수 키만 검사: postgres 자격과 agent 의 MAP_PROJECT_GEMINI_API_KEY(비면 부팅 실패).
-for k in MAP_PROJECT_POSTGRES_PASSWORD MAP_PROJECT_GEMINI_API_KEY; do
-  v="$(grep -E "^$k=" "$ENVF" | cut -d= -f2-)"
-  [ -n "$v" ] || { echo "  ✗ .env 의 $k 비어 있음(필수)."; exit 1; }
-done
-# BFF 는 RS256 서명이라 USER_JWT_PRIVATE_KEY/USER_JWT_PUBLIC_KEY 를 쓴다(구 JWT_SECRET 은 폐기).
-# USER_AUTH_ENFORCED=false 면 두 키가 비어도 임시 키쌍으로 부팅하므로 조건부로만 요구한다.
-if [ "$(grep -E '^USER_AUTH_ENFORCED=' "$ENVF" | cut -d= -f2-)" = "true" ]; then
-  for k in USER_JWT_PRIVATE_KEY USER_JWT_PUBLIC_KEY; do
-    v="$(grep -E "^$k=" "$ENVF" | cut -d= -f2-)"
-    [ -n "$v" ] || { echo "  ✗ USER_AUTH_ENFORCED=true 인데 .env 의 $k 비어 있음(필수)."; exit 1; }
-  done
-fi
-echo "  ✓ Docker 가동·필수 키 존재"
+# 비밀번호·토큰·암호 열쇠는 생성 스크립트가 만든다. 외부 키는 필요 없다 — 모델은
+# 합성 제공자(AGENT_LLM_PROVIDER=fake)가 기본이고 hub 는 키가 없으면 스텁으로 답한다.
+[ -f "$ENVF" ] || { echo "  ✗ $ENVF 없음. 먼저 ./scripts/make-local-env.sh 를 실행한다."; exit 1; }
+echo "  ✓ Docker 가동 · .env 존재"
 
-echo "== [1/5] postgres · redis 기동 =="
+echo "== [1/3] postgres · redis 기동 =="
 "${COMPOSE[@]}" up -d postgres redis
 
-# 마이그레이션은 DB 가 연결을 수락한 뒤에만 안전하므로 postgres 준비를 명시적으로 대기.
-echo "  postgres 준비 대기..."
-pg_ok=0
-for i in $(seq 1 30); do
-  if "${COMPOSE[@]}" exec -T postgres pg_isready -h 127.0.0.1 -U map -d map >/dev/null 2>&1; then pg_ok=1; break; fi
-  sleep 2
-done
-[ "$pg_ok" = 1 ] || { echo "  ✗ postgres 준비 타임아웃"; exit 1; }
-echo "  ✓ postgres ready"
-
-echo "== [2/5] hub · agent 이미지 빌드 =="
+echo "== [2/3] DB 준비 사슬 + hub · agent 빌드·기동 =="
 # 항상 빌드한다. 도커는 바뀐 것이 없으면 캐시로 즉시 끝내므로 반복 기동이
-# 느려지지 않는다.
+# 느려지지 않는다. 예전 이미지가 그대로 떠서 고친 것이 반영되지 않는 상태는
+# 겉으로 드러나지 않는다 — 컨테이너는 정상이고 로그도 조용하다.
+# MAP_SKIP_BUILD=1 을 주면 빌드를 건너뛴다(소스를 건드리지 않은 것이 확실할 때만).
 #
-# 예전에는 이미지가 있으면 건너뛰었는데, 그러면 소스를 고치고 다시 띄웠을 때
-# 예전 이미지가 그대로 떠서 고친 것이 반영되지 않았다. 그 상태는 겉으로
-# 드러나지 않아 — 컨테이너는 정상이고 로그도 조용하다 — 고친 사람이 코드를
-# 다시 들여다보게 만든다.
-#
-# MAP_SKIP_BUILD=1 을 주면 예전처럼 건너뛴다. 소스를 건드리지 않은 것이
-# 확실할 때만 쓴다.
-if [ "${MAP_SKIP_BUILD:-0}" = "1" ]; then
-  echo "  ✓ MAP_SKIP_BUILD=1 → 빌드 생략"
-else
-  "${COMPOSE[@]}" build hub agent
-fi
+# hub 는 빈 DB 준비 사슬(db-* · user-db-* · hub-db-migrate)이 끝난 뒤에 뜬다. 사슬은
+# user 이미지로 user 스키마를 먼저 만들므로 user 이미지도 함께 빌드된다. 두 번째
+# 기동부터 사슬은 할 일 없이 지나간다.
+build=(--build); [ "${MAP_SKIP_BUILD:-0}" = "1" ] && build=()
+"${COMPOSE[@]}" --profile backend up -d "${build[@]}" hub agent
 
-echo "== [3/5] hub_data 마이그레이션 =="
-# alembic 은 멱등하다(이미 적용된 revision 은 자동으로 건너뛴다). region_grid
-# 존재 여부로 건너뛰면 그 뒤에 추가된 revision(예: places 테이블)이 영영
-# 적용되지 않으므로, 조건 없이 항상 head 까지 올린다.
-# hub ENTRYPOINT 가 uvicorn 이라 그대로 두면 'uvicorn ... alembic upgrade
-# head' 로 합쳐져 실패한다 → --entrypoint alembic 로 덮어써 단독 실행한다.
-echo "  마이그레이션: alembic upgrade head"
-"${COMPOSE[@]}" run --rm --no-deps --entrypoint alembic hub upgrade head
-
-echo "== [4/5] hub · agent 기동 (--no-deps) =="
-# 위에서 postgres·redis 를 이미 기동했으므로 --no-deps 로 hub·agent 만 올려
-# 의존 컨테이너의 불필요한 재평가/재기동을 피한다.
-"${COMPOSE[@]}" up -d --no-deps hub agent
-
-echo "== [5/5] 헬스 체크 =="
+echo "== [3/3] 헬스 체크 =="
 fail=0
 for pair in "hub:8001" "agent:8000"; do
   name="${pair%%:*}"; port="${pair##*:}"; ok=0
