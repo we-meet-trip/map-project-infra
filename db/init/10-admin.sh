@@ -10,7 +10,7 @@
 # 수동 적용해야 한다(멱등이라 반복 안전):
 #   docker compose exec postgres bash /docker-entrypoint-initdb.d/10-admin.sh
 #
-# 비밀번호는 MAP_ADMIN_PASSWORD(컨테이너 env, 공유 .env 유래) 단일 출처에서
+# 비밀번호는 MAP_PROJECT_ADMIN_DB_PASSWORD(컨테이너 env, 공유 .env 유래) 단일 출처에서
 # 온다. admin 컨테이너의 ADMIN_DATABASE_URL 비밀번호와 반드시 일치해야 한다.
 #
 # cut2(2026-07-13): admin_data 스키마 소유권을 map_admin 으로 이전한다.
@@ -20,14 +20,14 @@
 # =========================================================================
 set -euo pipefail
 
-export MAP_ADMIN_PASSWORD="${MAP_ADMIN_PASSWORD:?MAP_ADMIN_PASSWORD must be set (infra .env)}"
+export MAP_PROJECT_ADMIN_DB_PASSWORD="${MAP_PROJECT_ADMIN_DB_PASSWORD:?MAP_PROJECT_ADMIN_DB_PASSWORD must be set (infra .env)}"
 
 # 따옴표 heredoc(<<'EOSQL')으로 $$·:'var' 를 psql 로 그대로 전달한다.
 # 비밀번호는 psql 이 환경에서 \getenv 로 읽어 psql 변수 :'mapadminpw' 로 안전하게
 # 인용한다(PostgreSQL 15 이상). -v 로 주면 값이 psql 명령줄(프로세스 목록)에 드러난다.
 psql -v ON_ERROR_STOP=1 \
      --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'EOSQL'
-\getenv mapadminpw MAP_ADMIN_PASSWORD
+\getenv mapadminpw MAP_PROJECT_ADMIN_DB_PASSWORD
 -- 역할이 없을 때만 생성(gexec: 생성 SQL 을 조건부 실행).
 SELECT 'CREATE ROLE map_admin LOGIN'
  WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'map_admin')

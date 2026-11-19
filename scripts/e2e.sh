@@ -134,7 +134,7 @@ sec "9. 이번 작업 산출물이 실제로 쌓이는가"
 q() { docker exec map-project-postgres psql -h 127.0.0.1 -At -U map -d map -c "$1" 2>/dev/null; }
 [ "$(q "SELECT count(*) FROM user_service.recommend_jobs WHERE source IS NOT NULL;")" -gt 0 ] \
   && ok "잡 출처(source)가 기록된다" || no "잡 출처(source)가 기록된다" "0건"
-if [ "${TRAINING_CAPTURE_ENABLED:-false}" = true ]; then
+if [ "${MAP_PROJECT_TRAINING_CAPTURE_ENABLED:-false}" = true ]; then
   [ "$(q "SELECT count(*) FROM user_service.recommend_training;")" -gt 0 ] \
     && ok "학습 신호가 보관된다" || no "학습 신호가 보관된다" "0건"
 else

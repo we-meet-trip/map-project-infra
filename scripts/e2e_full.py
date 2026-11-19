@@ -127,23 +127,23 @@ def main() -> int:
     user = f"{prefix}-user-1" if is_test else "map-project-user"
     agent = f"{prefix}-agent-1" if is_test else "map-project-agent"
 
-    db = env_value(env_file, "POSTGRES_DB") or "map"
-    db_user = env_value(env_file, "POSTGRES_USER") or "map"
-    db_pw = env_value(env_file, "POSTGRES_PASSWORD")
+    db = env_value(env_file, "MAP_PROJECT_POSTGRES_DB") or "map"
+    db_user = env_value(env_file, "MAP_PROJECT_POSTGRES_USER") or "map"
+    db_pw = env_value(env_file, "MAP_PROJECT_POSTGRES_PASSWORD")
     # 비밀번호는 환경파일에서만 읽는다. 예비값을 코드에 두면 그 값이 저장소에
     # 남고, 시험 계정이 켜진 스택이 고정 주소로 열리는 순간 그것만으로 들어올 수
     # 있다. 없으면 여기서 멈추는 편이 낫다.
-    password = env_value(env_file, "TESTER_SEED_PASSWORD")
+    password = env_value(env_file, "USER_TESTER_SEED_PASSWORD")
     if not password:
-        print(f"{env_file} 에 TESTER_SEED_PASSWORD 가 없다", file=sys.stderr)
+        print(f"{env_file} 에 USER_TESTER_SEED_PASSWORD 가 없다", file=sys.stderr)
         return 1
-    auth_on = env_value(env_file, "AUTH_ENFORCED").lower() == "true"
-    wire_on = bool(env_value(env_file, "LOCATION_WIRE_KEY"))
-    store_on = env_value(env_file, "LOCATION_ENC_ENABLED").lower() == "true"
-    redis_pw = env_value(env_file, "REDIS_PASSWORD")
+    auth_on = env_value(env_file, "USER_AUTH_ENFORCED").lower() == "true"
+    wire_on = bool(env_value(env_file, "MAP_PROJECT_LOCATION_WIRE_KEY"))
+    store_on = env_value(env_file, "USER_LOCATION_ENC_ENABLED").lower() == "true"
+    redis_pw = env_value(env_file, "MAP_PROJECT_REDIS_PASSWORD")
     # 체크포인트 봉하기 판정: 켜짐(기본값 포함) + 열쇠가 있어야 한다.
-    ckpt_seal_on = (env_value(env_file, "CHECKPOINT_ENABLED").lower() != "false"
-                    and bool(env_value(env_file, "CHECKPOINT_ENC_KEYS")))
+    ckpt_seal_on = (env_value(env_file, "AGENT_CHECKPOINT_ENABLED").lower() != "false"
+                    and bool(env_value(env_file, "AGENT_CHECKPOINT_ENC_KEYS")))
 
     def psql(sql: str) -> str:
         return sh("docker", "exec", "-e", f"PGPASSWORD={db_pw}", pg,

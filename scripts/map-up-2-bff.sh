@@ -23,30 +23,30 @@ done
 
 # 비밀값은 환경변수로만 주입(화면 미출력). 로컬 실행이라 컨테이너 DNS 가 아닌 호스트 포트 사용:
 # redis 는 호스트 16379(컨테이너 6379), agent/hub 는 호스트 8000/8001.
-export POSTGRES_PASSWORD="$(grep -E '^POSTGRES_PASSWORD=' "$ENVF" | cut -d= -f2-)"
+export MAP_PROJECT_POSTGRES_PASSWORD="$(grep -E '^MAP_PROJECT_POSTGRES_PASSWORD=' "$ENVF" | cut -d= -f2-)"
 # BFF 는 RS256 서명(JwtService 가 KeyPair 주입). 비어 있으면 임시 키쌍으로 기동하며
-# 재기동 시 기존 토큰이 전부 무효가 된다. AUTH_ENFORCED=true 면 비어 있을 때 부팅 중단.
-export JWT_PRIVATE_KEY="$(grep -E '^JWT_PRIVATE_KEY=' "$ENVF" | cut -d= -f2-)"
-export JWT_PUBLIC_KEY="$(grep -E '^JWT_PUBLIC_KEY=' "$ENVF" | cut -d= -f2-)"
-export AUTH_ENFORCED="$(grep -E '^AUTH_ENFORCED=' "$ENVF" | cut -d= -f2-)"
+# 재기동 시 기존 토큰이 전부 무효가 된다. USER_AUTH_ENFORCED=true 면 비어 있을 때 부팅 중단.
+export USER_JWT_PRIVATE_KEY="$(grep -E '^USER_JWT_PRIVATE_KEY=' "$ENVF" | cut -d= -f2-)"
+export USER_JWT_PUBLIC_KEY="$(grep -E '^USER_JWT_PUBLIC_KEY=' "$ENVF" | cut -d= -f2-)"
+export USER_AUTH_ENFORCED="$(grep -E '^USER_AUTH_ENFORCED=' "$ENVF" | cut -d= -f2-)"
 # 테스터 계정 시더. 켜져 있으면 부팅 때마다 maptester1..5@admin.map 을 보장한다.
 # 키가 .env 에 없으면 위 방식은 빈 문자열을 내보내는데, 빈 값은 설정 파일의 기본값을
 # 이기고 boolean 변환에서 기동을 깨뜨린다 → 비어 있으면 아예 내보내지 않는다.
-export TESTER_SEED_ENABLED="$(grep -E '^TESTER_SEED_ENABLED=' "$ENVF" | cut -d= -f2-)"
-[ -n "$TESTER_SEED_ENABLED" ] || unset TESTER_SEED_ENABLED
-export TESTER_SEED_PASSWORD="$(grep -E '^TESTER_SEED_PASSWORD=' "$ENVF" | cut -d= -f2-)"
-[ -n "$TESTER_SEED_PASSWORD" ] || unset TESTER_SEED_PASSWORD
+export USER_TESTER_SEED_ENABLED="$(grep -E '^USER_TESTER_SEED_ENABLED=' "$ENVF" | cut -d= -f2-)"
+[ -n "$USER_TESTER_SEED_ENABLED" ] || unset USER_TESTER_SEED_ENABLED
+export USER_TESTER_SEED_PASSWORD="$(grep -E '^USER_TESTER_SEED_PASSWORD=' "$ENVF" | cut -d= -f2-)"
+[ -n "$USER_TESTER_SEED_PASSWORD" ] || unset USER_TESTER_SEED_PASSWORD
 # 내부 서비스 공유 비밀. agent·hub 가 이 값으로 호출자를 확인하는데, 여기서
 # 내보내지 않으면 BFF 는 헤더를 안 붙인 채 부른다 → 그쪽이 값을 갖고 있으면
 # 추천 호출이 전부 401 이다. 도커로 띄울 때는 compose 가 넣어 주지만 이 길로
 # 띄우면 아무도 넣어 주지 않아, 같은 코드가 실행 방식에 따라 갈린다.
-export INTERNAL_SERVICE_TOKEN="$(grep -E '^INTERNAL_SERVICE_TOKEN=' "$ENVF" | cut -d= -f2-)"
-[ -n "$INTERNAL_SERVICE_TOKEN" ] || unset INTERNAL_SERVICE_TOKEN
-export POSTGRES_HOST=localhost POSTGRES_PORT=5432 POSTGRES_DB=map POSTGRES_USER=map
-export REDIS_HOST=localhost REDIS_PORT=16379
-export AGENT_BASE_URL=http://localhost:8000 HUB_BASE_URL=http://localhost:8001
+export MAP_PROJECT_INTERNAL_SERVICE_TOKEN="$(grep -E '^MAP_PROJECT_INTERNAL_SERVICE_TOKEN=' "$ENVF" | cut -d= -f2-)"
+[ -n "$MAP_PROJECT_INTERNAL_SERVICE_TOKEN" ] || unset MAP_PROJECT_INTERNAL_SERVICE_TOKEN
+export MAP_PROJECT_POSTGRES_HOST=localhost MAP_PROJECT_POSTGRES_PORT=5432 MAP_PROJECT_POSTGRES_DB=map MAP_PROJECT_POSTGRES_USER=map
+export USER_REDIS_HOST=localhost USER_REDIS_PORT=16379
+export MAP_PROJECT_AGENT_BASE_URL=http://localhost:8000 MAP_PROJECT_HUB_BASE_URL=http://localhost:8001
 
-echo "== BFF bootRun(8080) — 'Started ServiceUserApplication' 출력 시 준비. 종료 Ctrl+C =="
+echo "== BFF bootRun(8080) — 'Started UserApplication' 출력 시 준비. 종료 Ctrl+C =="
 cd "$MAP_ROOT/map-project-user"
 # exec 로 현재 셸을 대체 → Ctrl+C(SIGINT)가 gradle/JVM 에 직접 전달된다.
 exec ./gradlew bootRun --console=plain

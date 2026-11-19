@@ -31,8 +31,8 @@ done
 
 # 받아 쓰는 조합은 어느 판을 받을지가 비어 있으면 렌더링 자체가 멈춘다.
 # 이 검사는 이름이 겹치는지만 보므로 값의 내용은 상관없다. 여기서만 세운다.
-export IMAGE_REGISTRY="${IMAGE_REGISTRY:-겹침검사}"
-export IMAGE_TAG="${IMAGE_TAG:-겹침검사}"
+export MAP_PROJECT_IMAGE_REGISTRY="${MAP_PROJECT_IMAGE_REGISTRY:-겹침검사}"
+export MAP_PROJECT_IMAGE_TAG="${MAP_PROJECT_IMAGE_TAG:-겹침검사}"
 
 # 받아 쓰는 조합에서는 카메라 갈래를 빼고 본다. 그 갈래는 만들어 올리는
 # 목록에 없어서, 켜면 렌더링이 멈추는 것이 정상 동작이다. 그 사실 자체는

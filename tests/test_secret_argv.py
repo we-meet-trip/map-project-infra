@@ -26,7 +26,7 @@ class ShellSourceTests(unittest.TestCase):
     def test_admin_role_script_reads_the_password_inside_psql(self):
         text = (ROOT / 'db/init/10-admin.sh').read_text()
         self.assertNotRegex(text, r'-v +\w*pw\w*=')
-        self.assertIn("<<'EOSQL'\n\\getenv mapadminpw MAP_ADMIN_PASSWORD\n", text)
+        self.assertIn("<<'EOSQL'\n\\getenv mapadminpw MAP_PROJECT_ADMIN_DB_PASSWORD\n", text)
 
 
 class RolloverArgvTests(unittest.TestCase):

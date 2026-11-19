@@ -40,8 +40,8 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      EDGE_DOMAIN: ${EDGE_DOMAIN:?바깥에서 부를 주소를 정해야 한다}
-      EDGE_EMAIL: ${EDGE_EMAIL:?인증서 만료 알림을 받을 주소를 정해야 한다}
+      EDGE_DOMAIN: ${MAP_PROJECT_EDGE_DOMAIN:?바깥에서 부를 주소를 정해야 한다}
+      EDGE_EMAIL: ${MAP_PROJECT_EDGE_EMAIL:?인증서 만료 알림을 받을 주소를 정해야 한다}
     volumes:
       - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
       - edge-data:/data
@@ -59,6 +59,6 @@ services:
 # collide on one host; start only one public edge per host.
 volumes:
   edge-data:
-    name: ${COMPOSE_PROJECT_NAME:-map}_edge-data
+    name: ${COMPOSE_PROJECT_NAME:-map-project}_edge-data
   edge-config:
-    name: ${COMPOSE_PROJECT_NAME:-map}_edge-config
+    name: ${COMPOSE_PROJECT_NAME:-map-project}_edge-config

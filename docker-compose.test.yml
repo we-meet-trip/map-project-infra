@@ -32,7 +32,7 @@ services:
     # 이 변수가 없어 여기서 즉시 멈춘다. 오버레이만 붙이고 환경파일을 운영 것으로
     # 둔 채 뜨는 사고를 사람 기억이 아니라 파일이 막게 하려는 장치다.
     labels:
-      map.stack: "${MAP_STACK_ENV:?시험 스택은 --env-file ./.env.test 와 함께 실행한다}"
+      map.stack: "${MAP_PROJECT_STACK_ENV:?시험 스택은 --env-file ./.env.test 와 함께 실행한다}"
     container_name: !reset null
     ports: !override
       - "127.0.0.1:5632:5432"

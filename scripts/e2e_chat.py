@@ -170,7 +170,7 @@ async def main():
     ap.add_argument("--redis-db", default="4")
     # 저장소에 비밀번호가 걸린 스택이면 환경변수나 이 인자로 준다.
     ap.add_argument("--redis-password",
-                    default=os.environ.get("REDIS_PASSWORD", ""))
+                    default=os.environ.get("MAP_PROJECT_REDIS_PASSWORD", ""))
     ap.add_argument("--pg", default="map-project-postgres",
                     help="추천 작업 주인을 심을 postgres 컨테이너 이름")
     ap.add_argument("--pg-user", default="map")

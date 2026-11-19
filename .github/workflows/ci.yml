@@ -53,13 +53,13 @@ jobs:
           # 값이 환경파일에 없다는 사실이 서버에서 처음 드러난다 — 실제로 그렇게
           # 됐다. 값은 검사용으로 세운다. 여기서 보려는 것은 값의 내용이 아니라
           # 요구하는 자리가 다 채워지는지다.
-          IMAGE_REGISTRY=검사용 IMAGE_TAG=검사용 \
+          MAP_PROJECT_IMAGE_REGISTRY=검사용 MAP_PROJECT_IMAGE_TAG=검사용 \
             docker compose --env-file ./.env \
               -f docker-compose.yml -f docker-compose.registry.yml \
               --profile full --profile routing config -q
           # 앞단만 얹는 조합은 동적 DNS 값 없이도 그려져야 한다. 도메인을 직접
           # 관리하는 서버의 환경파일에는 그 값이 없다.
-          EDGE_DOMAIN=example.invalid EDGE_EMAIL=ci@example.invalid \
+          MAP_PROJECT_EDGE_DOMAIN=example.invalid MAP_PROJECT_EDGE_EMAIL=ci@example.invalid \
             docker compose --env-file ./.env \
               -f docker-compose.yml -f docker-compose.edge.yml \
               --profile full --profile edge config -q

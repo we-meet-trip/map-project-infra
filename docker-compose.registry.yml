@@ -25,18 +25,18 @@
 services:
   user:
     build: !reset null
-    image: ${IMAGE_REGISTRY:?이미지를 받아올 곳을 정해야 한다}/map-project-user:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${MAP_PROJECT_IMAGE_REGISTRY:?이미지를 받아올 곳을 정해야 한다}/map-project-user:${MAP_PROJECT_IMAGE_TAG:?어느 판을 받을지 정해야 한다}
 
   agent:
     build: !reset null
-    image: ${IMAGE_REGISTRY}/map-project-agent:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${MAP_PROJECT_IMAGE_REGISTRY}/map-project-agent:${MAP_PROJECT_IMAGE_TAG:?어느 판을 받을지 정해야 한다}
 
   hub:
     build: !reset null
-    image: ${IMAGE_REGISTRY}/map-project-hub:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${MAP_PROJECT_IMAGE_REGISTRY}/map-project-hub:${MAP_PROJECT_IMAGE_TAG:?어느 판을 받을지 정해야 한다}
 
   yolo:
     # 만드는 자리를 지운다. 남겨 두면 작은 서버가 조용히 빌드로 넘어가는데,
     # 이 이미지는 모델까지 들어 있어 그 자리에서 몇 십 분을 잡아먹는다.
     build: !reset null
-    image: ${IMAGE_REGISTRY}/map-project-yolo:${IMAGE_TAG:?어느 판을 받을지 정해야 한다}
+    image: ${MAP_PROJECT_IMAGE_REGISTRY}/map-project-yolo:${MAP_PROJECT_IMAGE_TAG:?어느 판을 받을지 정해야 한다}
