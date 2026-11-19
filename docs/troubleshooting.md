@@ -10,7 +10,7 @@
 - 해결: 비밀값 생성 스크립트(`scripts/make-local-env.sh`)와 compose 의 일회성 DB 준비 사슬(`db/setup/`). 같은 비밀번호가 로그인과 접속 문자열 두 곳에 들어가므로 한곳에서 만들어 맞춘다.
 - 검증: psql 단계를 빈 postgres 컨테이너에서 두 번 연달아 돌려, 첫 번째는 역할·스키마를 만들고 두 번째는 건너뛰는 것을 확인한다.
 - 교훈: "복사하면 뜬다" 는 문장은 빈 볼륨에서 실제로 띄워 봐야만 참이다. 상태 확인이 초록이어도 표가 없을 수 있다.
-- 관련 커밋: {{commit:bc22b76}}
+- 관련 커밋: [`a7b045c`](https://github.com/we-meet-trip/map-project-infra/commit/a7b045c0afb18da1ab6ca1a9c7147b844d425e74)
 
 ### T-INFRA-02 PostGIS 이미지가 빈 DB 를 빈 DB 가 아니게 만든다
 - 증상: user 의 빈 DB 부트스트랩 준비 SQL 이 "exclusive pristine database" 로 거절된다. 새 볼륨인데도 그렇다.
@@ -18,7 +18,7 @@
 - 해결: postgres 의 첫 부팅 스크립트 자리(`/docker-entrypoint-initdb.d`)를 빈 tmpfs 로 덮고, PostGIS 는 user 부트스트랩 뒤에 필요한 확장만 `public` 에 깐다.
 - 검증: 덮지 않으면 준비 SQL 이 rc=3 으로 실패하고, 덮으면 성공한다.
 - 교훈: 기반 이미지가 첫 부팅에 무엇을 하는지는 문서보다 이미지 안의 스크립트를 본다.
-- 관련 커밋: {{commit:bc22b76}}
+- 관련 커밋: [`a7b045c`](https://github.com/we-meet-trip/map-project-infra/commit/a7b045c0afb18da1ab6ca1a9c7147b844d425e74)
 
 ### T-INFRA-03 부트스트랩 진입점이 Docker 가 넣은 환경변수 때문에 멈춘다
 - 증상: user 부트스트랩이 `{"status":"configuration_rejected"}` 로 끝난다.
@@ -26,26 +26,26 @@
 - 해결: 감싸기 스크립트(`db/setup/user-bootstrap.sh`)가 허용 이름 밖의 변수를 지우고 진입점을 부른다. 값을 명령줄로 다시 넘기지 않으려고 `env -i K=V` 대신 지우는 쪽을 쓴다.
 - 검증: 임시 컨테이너에서 정리 뒤 남는 이름이 허용 목록뿐인지 본다.
 - 교훈: 허용 목록 검사는 실행 환경이 몰래 넣는 값까지 고려해야 한다.
-- 관련 커밋: {{commit:545b9ce}}
+- 관련 커밋: [`39a198e`](https://github.com/we-meet-trip/map-project-infra/commit/39a198eac5bdc57369454b15238565a56eff0241)
 
 ### T-INFRA-04 hub 는 정상인데 수집 작업만 실패한다
 - 증상: hub 가 뜨고 상태 확인도 통과하는데, 예약해 둔 날씨·코스 수집만 계속 실패한다.
 - 원인: 본보기의 접속 문자열이 hub 에 없는 드라이버(`asyncpg`)를 가리켰다. hub 가 가진 드라이버는 psycopg 하나다.
 - 해결: 접속 문자열을 `postgresql+psycopg://` 로 고정하고, 바꾸지 말라는 설명을 본보기에 둔다.
 - 교훈: 상태 확인이 보는 길과 실제 작업이 쓰는 길이 다르면, 상태 확인은 그 고장을 보지 못한다.
-- 관련 커밋: {{commit:504c57c}}
+- 관련 커밋: [`6e7d059`](https://github.com/we-meet-trip/map-project-infra/commit/6e7d05928a11a7c95825b3c6d43d2a9aeef24678)
 
 ### T-INFRA-05 고친 코드가 반영되지 않는다
 - 증상: 소스를 고치고 다시 띄웠는데 예전 동작이 그대로다. 컨테이너는 정상이고 로그도 조용하다.
 - 원인: 기동 스크립트가 이미지가 이미 있으면 빌드를 건너뛰었다.
 - 해결: 항상 빌드한다. 바뀐 것이 없으면 캐시로 바로 끝나므로 느려지지 않는다.
-- 관련 커밋: {{commit:7e3ae25}}
+- 관련 커밋: [`38bfe86`](https://github.com/we-meet-trip/map-project-infra/commit/38bfe860eda3d3e79020a4273d38e4590ea72191)
 
 ### T-INFRA-06 arm64 맥에서 postgres 이미지를 받지 못한다
 - 증상: 새 Apple Silicon 맥에서 `no matching manifest for linux/arm64/v8` 로 받기가 실패하고, postgres 에 기대는 서비스가 모두 뜨지 않는다.
 - 원인: PostGIS 이미지에 arm64 판이 없다.
 - 해결: `platform: linux/amd64` 를 명시해 에뮬레이션으로 돌린다.
-- 관련 커밋: {{commit:9ebf577}}
+- 관련 커밋: [`3cafe03`](https://github.com/we-meet-trip/map-project-infra/commit/3cafe03d952caf9661e06a3158534e3887e27dc4)
 
 ### T-INFRA-18 관리 콘솔이 hub 표를 하나도 읽지 못한다
 - 증상: 관리 콘솔 로그인과 스트림 화면은 되는데, 수집·장소 화면이 DB 오류를 내고 hub 표 목록이 비어 있다.
@@ -53,7 +53,7 @@
 - 해결: `FOR ROLE map_hub_owner` 를 붙이고, 마무리 단계에서 지금 있는 hub 표 전부에 읽기 권한을 다시 준다(이미 만들어진 볼륨도 덮는다).
 - 검증: `tests/test_db_setup_psql.py` 가 빈 postgis 컨테이너에서 hub 소유 역할로 표를 만들고 콘솔 역할이 읽는지 본다. 고치기 전에는 세 표 모두 실패한다.
 - 교훈: 권한 SQL 은 "누가 그 객체를 만드는가" 까지 맞춰야 한다. 빈 볼륨 통합 실행으로만 드러났다.
-- 관련 커밋: {{commit:92c3e85}}
+- 관련 커밋: [`48b94cc`](https://github.com/we-meet-trip/map-project-infra/commit/48b94cc43705baf9ab76f1971a3557a4be8113e2)
 
 ## 자원
 
@@ -63,30 +63,30 @@
 - 해결: 파일을 매핑해 읽게 한다(`--mmap 1`). 남는 부분은 커널이 버리므로 상한이 죽이는 선이 아니라 눌러 두는 선이 된다.
 - 검증: 시작 약 70MiB, 서로 다른 좌표 30회 조회 뒤 약 380MiB(상한 1GiB 의 37%). 기동도 1분 넘게 걸리던 것이 10초 안쪽으로 줄었다.
 - 교훈: 평소 꺼 두는 프로필도 상한을 정할 때는 한 번 띄워 본다.
-- 관련 커밋: {{commit:a224f7c}}
+- 관련 커밋: [`5bbb5c2`](https://github.com/we-meet-trip/map-project-infra/commit/5bbb5c235b5e91fa13baca723e3e817c9f8e07bc)
 
 ### T-INFRA-08 2코어 서버에서 컨테이너가 아예 만들어지지 않는다
 - 증상: user·yolo 컨테이너 생성이 거절된다.
 - 원인: CPU 상한이 기계의 코어 수보다 컸다.
 - 해결: 상한을 2.0 이하로 둔다.
-- 관련 커밋: {{commit:60e761b}}
+- 관련 커밋: [`6df1050`](https://github.com/we-meet-trip/map-project-infra/commit/6df1050f6998fbb74fa4c8f5fda13d1d0f4ec715)
 
 ### T-INFRA-09 대시보드가 시간 초과로 비어 있다
 - 증상: Grafana 의 상태는 초록인데 대시보드가 그려지지 않는다.
 - 원인: 놀 때 이미 약 275MiB 를 쓰는 서비스에 384MiB 상한을 걸어, 그릴 때마다 커널이 메모리를 되찾느라 내부 API 가 시간 초과로 끝났다. 죽지 않으므로 재시작 수에도 남지 않는다.
 - 해결: 상한을 작업 집합 위로 올리고, 렌더 시험으로 하한을 고정한다(`tests/test_admin_token_runtime.py`).
-- 관련 커밋: {{commit:2f0e2f1}}
+- 관련 커밋: [`65acd2e`](https://github.com/we-meet-trip/map-project-infra/commit/65acd2e0928957ce2788126e0a333d3e0d923840)
 
 ### T-INFRA-10 디스크가 로그로 찬다
 - 증상: 어느 날 "갑자기 아무것도 안 된다".
 - 원인: 컨테이너 로그에 크기 제한이 없어, 상태 확인만으로도 하루 수만 줄이 쌓였다.
 - 해결: 서비스마다 10MB × 3벌로 묶는다.
-- 관련 커밋: {{commit:7ea8d9e}}
+- 관련 커밋: [`3b90cff`](https://github.com/we-meet-trip/map-project-infra/commit/3b90cff4dbf0336eea4b8769647370890ec3e1af)
 
 ### T-INFRA-11 재배포 때마다 진행 중 요청이 시간 초과까지 매달린다
 - 원인: agent 는 진행 중 작업을 기다렸다가 실패를 알리고 나가는데, 컨테이너 기본 종료 유예 10초가 그 절차를 끊었다.
 - 해결: 종료 유예를 320초로 준다. 할 일이 없으면 곧바로 나가므로 평소 배포는 느려지지 않는다.
-- 관련 커밋: {{commit:9d76b87}}
+- 관련 커밋: [`b784285`](https://github.com/we-meet-trip/map-project-infra/commit/b784285276e9f338ce448c0f2b052e278673cd62)
 
 ## 관문
 
@@ -94,19 +94,19 @@
 - 증상: user 를 다시 만들 때마다 모든 요청과 채팅 연결이 502 로 끊긴다.
 - 원인: nginx 가 상류 이름을 기동 때 한 번만 풀어, 새 컨테이너의 주소를 몰랐다.
 - 해결: 상류를 변수로 두고 Docker 내부 DNS 로 요청 때마다 다시 푼다(`proxy/default.conf`).
-- 관련 커밋: {{commit:90fe764}}
+- 관련 커밋: [`5f6c016`](https://github.com/we-meet-trip/map-project-infra/commit/5f6c0160d9dc545a0aaf3cc7ac3047ac9c7aa009)
 
 ### T-INFRA-13 주소 헤더를 바꿔 보내면 요청 한도가 걸리지 않는다
 - 증상: 일정 생성의 주소당 상한이 동작하지 않는다.
 - 원인: 관문이 모든 발신지의 `X-Forwarded-For` 를 믿어, 요청자가 자기 주소를 마음대로 정할 수 있었다. 그 값이 곧 상한의 키였다.
 - 해결: 신뢰하는 대역을 관문에 실제로 닿을 수 있는 사설·루프백으로 좁히고, 앞단이 덮어쓰는 단일 값 헤더를 쓴다. 상류로 넘기는 헤더도 이어 붙이지 않고 덮어쓴다.
 - 검증: 헤더를 바꿔 가며 12회 부르면 고치기 전에는 429 가 0건, 고친 뒤에는 4건 통과 후 8건이 429.
-- 관련 커밋: {{commit:d9d9718}}
+- 관련 커밋: [`b40da31`](https://github.com/we-meet-trip/map-project-infra/commit/b40da3198334ea82cec831b6c6a7ad8e7dd69d92)
 
 ### T-INFRA-14 관문 접근 로그에 좌표가 평문으로 쌓인다
 - 원인: 기본 로그 형식이 요청 줄 전체(위도·경도 질의 포함)를 남겼다.
 - 해결: 경로만 남기는 로그 형식을 따로 만든다. 기본 정의와 이름이 겹치면 기동하지 않으므로 다른 이름을 쓴다.
-- 관련 커밋: {{commit:8567ed2}}
+- 관련 커밋: [`8bdceda`](https://github.com/we-meet-trip/map-project-infra/commit/8bdceda2c74b4792206aaf6f1f43de53d4568305)
 
 ## 비밀값
 
@@ -114,18 +114,18 @@
 - 증상: 호스트의 다른 계정이 `ps` 로 Redis·관리 콘솔 DB 비밀번호를 읽을 수 있다.
 - 원인: 값을 명령줄 인자로 넘겼다.
 - 해결: Redis 는 표준입력의 설정 한 줄로, 상태 확인은 `REDISCLI_AUTH` 로, psql 은 `\getenv` 로 읽는다. 회귀 시험으로 고정한다(`tests/test_secret_argv.py`).
-- 관련 커밋: {{commit:3d0a05b}}
+- 관련 커밋: [`5164ac1`](https://github.com/we-meet-trip/map-project-infra/commit/5164ac1eade5f716a1a655d8b73f639d4d2bfaa2)
 
 ### T-INFRA-16 같은 이름의 값을 두 서비스가 다른 뜻으로 읽는다
 - 증상: (드러나기 전) `.env` 에 캐시 DB 번호를 적으면 user 또는 hub 중 한쪽이 엉뚱한 Redis DB 를 쓰게 된다.
 - 원인: 같은 이름을 user 는 재사용 캐시 DB(6)로, hub·관리 콘솔은 외부 데이터 캐시 DB(4)로 읽었고, compose 는 같은 변수 하나를 셋에 넘겼다. 본보기에 값이 없어 각자 기본값으로 돌아 드러나지 않았다.
 - 해결: 환경변수 이름을 나눠 user 와 hub·관리 콘솔이 다른 이름을 읽게 한다.
 - 교훈: 이름을 합칠지 나눌지는 이름이 아니라 "같은 값을 읽는가" 로 정한다.
-- 관련 커밋: {{commit:872901b}}
+- 관련 커밋: [`3c3b596`](https://github.com/we-meet-trip/map-project-infra/commit/3c3b59668e70cb53417cb33cf0a76f9115d84f8f)
 
 ## 격리
 
 ### T-INFRA-17 이름만 바꾼 시험 스택이 다른 스택의 DB 볼륨을 문다
 - 원인: compose 가 볼륨·컨테이너 이름을 값으로 못박아 두어, 덧칠에서 프로젝트명만 바꾸면 볼륨이 갈라지지 않았다. 그 상태로 마이그레이션이 돌면 되돌릴 수 없다.
 - 해결: 시험 덧칠이 포트·볼륨·네트워크·컨테이너 이름을 따로 두고, `scripts/compose-isolation-check.sh` 가 두 스택을 렌더해 다섯 축의 겹침이 0 인지 기계로 본다. 공개본은 볼륨 고정 이름도 풀었다.
-- 관련 커밋: {{commit:929497e}}, {{commit:51baa6e}}
+- 관련 커밋: [`6371085`](https://github.com/we-meet-trip/map-project-infra/commit/63710855e7a88f19b44b418da8990238dd0e3dc8), [`362875e`](https://github.com/we-meet-trip/map-project-infra/commit/362875e9da20ee0a5702594248ca005d1fb74e7e)
