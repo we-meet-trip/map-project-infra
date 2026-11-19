@@ -1,0 +1,60 @@
+// 전체 시스템 그림. @…@ 자리는 scripts/render_diagrams.sh 가 라이트·다크 팔레트로 채운다.
+// 모든 노드·엣지의 근거는 docs/diagrams/CLAIMS.md 에 있다.
+digraph system {
+  graph [rankdir=LR, bgcolor="@BG@", fontname="Pretendard", fontcolor="@FG@", fontsize=13,
+         nodesep=0.7, ranksep=1.5, splines=ortho, pad=0.3, newrank=true];
+  node  [fontname="Pretendard", fontcolor="@FG@", fontsize=12, shape=box, style="rounded,filled", penwidth=1.4];
+  edge  [fontname="Pretendard", fontcolor="@FG@", fontsize=10, color="@LINE@", penwidth=1.1, arrowsize=0.7];
+
+  client [label="map-project-client\n모바일·웹 앱", fillcolor="@SVC_F@", color="@SVC_L@"];
+
+  subgraph cluster_stack {
+    label="서비스 스택  docker-compose.yml  (프로젝트 map-project, 네트워크 map-net)";
+    color="@LINE@"; style="rounded,dashed"; fontsize=12;
+    proxy  [label="proxy (nginx)\n:8090 공개 관문\n:8081 내부 창구", fillcolor="@SVC_F@", color="@SVC_L@"];
+    user   [label="user (BFF)\n:8080", fillcolor="@SVC_F@", color="@SVC_L@"];
+    agent  [label="agent\n:8000\n합성 LLM 기본", fillcolor="@SVC_F@", color="@SVC_L@"];
+    hub    [label="hub\n:8001", fillcolor="@SVC_F@", color="@SVC_L@"];
+    setup  [label="DB 준비 사슬\n(일회성, 끝나면 멈춤)", fillcolor="@SVC_F@", color="@SVC_L@"];
+    yolo   [label="yolo (비전)\n:8004\n(기본 꺼짐)", fillcolor="@OPT_F@", color="@OPT_L@", style="rounded,filled,dashed"];
+    osrm   [label="osrm-foot :5000\nosrm-bicycle :5001\n(기본 꺼짐)", fillcolor="@OPT_F@", color="@OPT_L@", style="rounded,filled,dashed"];
+    postgres [label="postgres + PostGIS\n:5432", shape=cylinder, fillcolor="@ST_F@", color="@ST_L@"];
+    redis    [label="redis\n:16379", shape=cylinder, fillcolor="@ST_F@", color="@ST_L@"];
+  }
+
+  subgraph cluster_admin {
+    label="관리 스택  docker-compose.admin.yml  (프로젝트 map-admin)";
+    color="@LINE@"; style="rounded,dashed"; fontsize=12;
+    adminweb [label="admin-web\n:8003", fillcolor="@SVC_F@", color="@SVC_L@"];
+    admin    [label="admin (API) :8002\nDB: admin_data 쓰기 · hub_data 읽기", fillcolor="@SVC_F@", color="@SVC_L@"];
+    monitor  [label="prometheus :9090 · grafana :3000\nexporter 3종\n(기본 꺼짐)", fillcolor="@OPT_F@", color="@OPT_L@", style="rounded,filled,dashed"];
+  }
+
+  gemini [label="Gemini API\n(키를 넣을 때만)", fillcolor="@EXT_F@", color="@EXT_L@", style="rounded,filled,dashed"];
+  public [label="공공·지도 API\n(키가 없으면 스텁)", fillcolor="@EXT_F@", color="@EXT_L@", style="rounded,filled,dashed"];
+
+  client -> proxy   [taillabel="HTTP·WebSocket", labeldistance=4, labelangle=25];
+  proxy  -> user    [xlabel="/api/v1 · /ws/chat"];
+  proxy  -> yolo    [taillabel="/ws/vision", labeldistance=4, labelangle=-25, style=dashed];
+  user   -> agent   [taillabel="내부 창구 /agent", labeldistance=5, labelangle=20];
+  user   -> hub     [xlabel="내부 창구 /hub"];
+  agent  -> hub     [xlabel="내부 창구 /hub"];
+  yolo   -> user    [xlabel="사용 승인", style=dashed];
+  user   -> postgres [xlabel="user_service"];
+  hub    -> postgres [xlabel="hub_data"];
+  agent  -> postgres [xlabel="langgraph (기본 꺼짐)", style=dashed];
+  user   -> redis;
+  agent  -> redis;
+  hub    -> redis;
+  setup  -> postgres [xlabel="역할·스키마·마이그레이션"];
+  hub    -> osrm    [xlabel="도보·자전거 경로", style=dashed];
+  hub    -> public  [style=dashed];
+  agent  -> gemini  [style=dashed];
+  yolo   -> gemini  [style=dashed];
+  adminweb -> admin;
+  admin  -> postgres;
+  admin  -> redis    [xlabel="진단 읽기"];
+  admin  -> proxy    [xlabel="관리 API (내부 창구)"];
+  monitor -> postgres [style=dashed];
+  monitor -> redis    [style=dashed];
+}

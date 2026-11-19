@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# docs/diagrams/src 의 원본에서 라이트·다크 SVG 와 PNG 를 모두 다시 만든다.
+#   *.dot      Graphviz — @…@ 자리를 팔레트로 채워 dot 으로 그린다
+#   *.seq.json 시퀀스 — scripts/seq.py 가 두 팔레트를 함께 만든다
+# 필요한 것: dot(Graphviz), rsvg-convert(librsvg), Pretendard 글꼴(SIL OFL 1.1, 저장소에 넣지 않는다).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+SRC=docs/diagrams/src
+OUT=docs/diagrams
+
+palette() {  # $1 = light | dark → sed 치환식
+  if [ "$1" = light ]; then
+    printf '%s\n' 's/@BG@/#FFFFFF/g;s/@FG@/#1F2328/g;s/@LINE@/#57606A/g' \
+      's/@SVC_F@/#DDF4FF/g;s/@SVC_L@/#0969DA/g;s/@ST_F@/#FFF8C5/g;s/@ST_L@/#9A6700/g' \
+      's/@EXT_F@/#F6F8FA/g;s/@EXT_L@/#57606A/g;s/@OPT_F@/#FBEFFF/g;s/@OPT_L@/#8250DF/g'
+  else
+    printf '%s\n' 's/@BG@/#0D1117/g;s/@FG@/#E6EDF3/g;s/@LINE@/#8B949E/g' \
+      's/@SVC_F@/#0C2D6B/g;s/@SVC_L@/#58A6FF/g;s/@ST_F@/#3B2E00/g;s/@ST_L@/#D29922/g' \
+      's/@EXT_F@/#161B22/g;s/@EXT_L@/#8B949E/g;s/@OPT_F@/#2B1D3D/g;s/@OPT_L@/#A371F7/g'
+  fi
+}
+
+shopt -s nullglob
+for src in "$SRC"/*.dot; do
+  name=$(basename "$src" .dot)
+  for theme in light dark; do
+    sed "$(palette "$theme")" "$src" | dot -Tsvg -o "$OUT/$name-$theme.svg"
+    rsvg-convert -w 1600 "$OUT/$name-$theme.svg" -o "$OUT/$name-$theme.png"
+  done
+done
+for src in "$SRC"/*.seq.json; do
+  name=$(basename "$src" .seq.json)
+  python3 scripts/seq.py "$src" "$OUT/$name"
+  for theme in light dark; do
+    rsvg-convert -w 1600 "$OUT/$name-$theme.svg" -o "$OUT/$name-$theme.png"
+  done
+done
+echo "다이어그램을 다시 만들었다: $OUT"
