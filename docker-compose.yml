@@ -98,6 +98,8 @@ services:
     <<: *default-logging
     build:
       context: ../map-project-user
+    # 같은 레포를 쓰는 서비스끼리 이미지 하나를 나눠 쓴다(한 번만 빌드).
+    image: map-project-user:local
     profiles: ["backend", "full"]
     restart: "no"
     cap_drop: [ALL]
@@ -128,6 +130,8 @@ services:
     <<: *default-logging
     build:
       context: ../map-project-user
+    # 같은 레포를 쓰는 서비스끼리 이미지 하나를 나눠 쓴다(한 번만 빌드).
+    image: map-project-user:local
     profiles: ["backend", "full"]
     restart: "no"
     cap_drop: [ALL]
@@ -152,6 +156,8 @@ services:
     <<: *default-logging
     build:
       context: ../map-project-hub
+    # 같은 레포를 쓰는 서비스끼리 이미지 하나를 나눠 쓴다(한 번만 빌드).
+    image: map-project-hub:local
     profiles: ["backend", "full"]
     restart: "no"
     cap_drop: [ALL]
@@ -343,6 +349,8 @@ services:
     security_opt: [no-new-privileges:true]
     build:
       context: ../map-project-user
+    # 같은 레포를 쓰는 서비스끼리 이미지 하나를 나눠 쓴다(한 번만 빌드).
+    image: map-project-user:local
     container_name: map-project-user
     <<: *default-logging
     restart: unless-stopped
@@ -592,6 +600,8 @@ services:
     security_opt: [no-new-privileges:true]
     build:
       context: ../map-project-hub
+    # 같은 레포를 쓰는 서비스끼리 이미지 하나를 나눠 쓴다(한 번만 빌드).
+    image: map-project-hub:local
     container_name: map-project-hub
     <<: *default-logging
     environment:
