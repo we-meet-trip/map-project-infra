@@ -6,7 +6,8 @@
 
 역할 SQL 은 형제 레포(../map-project-user·hub·agent)의 것을 쓴다. Docker, 로컬
 postgis 이미지, 형제 레포 중 하나라도 없으면 건너뛴다(외부 네트워크를 쓰지 않는다).
-컨테이너·네트워크는 maposs-infra-* 이름으로 만들고 끝나면 지운다."""
+컨테이너·네트워크는 maposs-infra-* 이름으로 만들고 끝나면 지운다. 이미지가 데이터 자리를
+볼륨으로 선언해 두었으므로 그 자리를 tmpfs 로 덮어 익명 볼륨이 생기지 않게 한다."""
 import os
 from pathlib import Path
 import shutil
@@ -19,6 +20,7 @@ import uuid
 ROOT = Path(__file__).resolve().parent.parent
 WORK = ROOT.parent
 IMAGE = 'postgis/postgis:17-3.5'
+NO_VOLUME = ['--tmpfs', '/var/lib/postgresql/data']
 SQL = {
     'user': WORK / 'map-project-user/scripts/sql',
     'hub': WORK / 'map-project-hub/scripts/database-roles.sql',
@@ -54,7 +56,7 @@ class DatabaseSetupTests(unittest.TestCase):
         subprocess.run(['docker', 'network', 'create', cls.net], check=True, capture_output=True)
         subprocess.run(['docker', 'run', '-d', '--rm', '--name', cls.pg, '--network', cls.net,
                         '--network-alias', 'postgres', '--platform', 'linux/amd64',
-                        '--tmpfs', '/docker-entrypoint-initdb.d',
+                        '--tmpfs', '/docker-entrypoint-initdb.d', *NO_VOLUME,
                         '-e', f"POSTGRES_DB={values['MAP_PROJECT_POSTGRES_DB']}",
                         '-e', f"POSTGRES_USER={values['MAP_PROJECT_POSTGRES_USER']}",
                         '-e', 'POSTGRES_PASSWORD',
@@ -71,14 +73,14 @@ class DatabaseSetupTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        subprocess.run(['docker', 'rm', '-f', cls.pg], capture_output=True)
+        subprocess.run(['docker', 'rm', '-f', '-v', cls.pg], capture_output=True)
         subprocess.run(['docker', 'network', 'rm', cls.net], capture_output=True)
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def step(self, name):
         return subprocess.run(
             ['docker', 'run', '--rm', '--name', f'maposs-infra-setup-{self.tag}', '--network', self.net,
-             '--platform', 'linux/amd64', '--env-file', str(self.env),
+             '--platform', 'linux/amd64', '--env-file', str(self.env), *NO_VOLUME,
              '-v', f'{ROOT}/db/setup:/setup:ro', '-v', f"{SQL['user']}:/sql/user:ro",
              '-v', f"{SQL['hub']}:/sql/hub/database-roles.sql:ro",
              '-v', f"{SQL['agent']}:/sql/agent/database-roles.sql:ro", '-v', f'{self.state}:/state',
