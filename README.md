@@ -91,7 +91,7 @@ curl -s http://127.0.0.1:8090/healthz/app   # 관문 → user
 모든 값의 자리와 설명은 [`.env.example`](.env.example) 에 있다. `.env.example` 의 비밀값 자리는 비어 있고 `make-local-env.sh` 가 채운다.
 
 - **로컬 실행용 기본값이다 — 외부에 열기 전에 반드시 인증(`USER_`/`AGENT_`/`HUB_AUTH_ENFORCED`)을 켜고, 서명 열쇠·토큰을 다시 만들고, CORS 출처(`USER_CORS_ALLOWED_ORIGINS`)를 좁힌다.** 관리 콘솔 쿠키도 `ADMIN_SESSION_COOKIE_SECURE=true` 로 둔다.
-- 실제 모델을 쓰려면 `AGENT_LLM_PROVIDER=gemini` 와 `MAP_PROJECT_GEMINI_API_KEY` 를 넣는다. 실제 외부 데이터를 쓰려면 hub 의 키(`MAP_PROJECT_KMA_SERVICE_KEY`·`MAP_PROJECT_KAKAO_REST_API_KEY` 등)를 넣는다. 키를 넣는 순간부터 그 발급처의 한도·요금이 적용된다.
+- 실제 모델을 쓰려면 `AGENT_LLM_PROVIDER=gemini` 와 `MAP_PROJECT_GEMINI_API_KEY` 를 넣는다. 실제 외부 데이터를 쓰려면 `HUB_PLACES_STUB_MODE=false` 로 바꾸고 hub 의 키(`MAP_PROJECT_KMA_SERVICE_KEY`·`MAP_PROJECT_KAKAO_REST_API_KEY` 등)를 넣는다. 키를 넣는 순간부터 그 발급처의 한도·요금이 적용된다.
 - 이름 체계와 공유 비밀값은 [docs/contracts.md](docs/contracts.md).
 
 ## 데이터

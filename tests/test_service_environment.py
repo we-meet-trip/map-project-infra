@@ -46,6 +46,25 @@ class ServiceEnvironmentTests(unittest.TestCase):
         self.assertIn('map_hub_runtime',services['hub']['environment']['HUB_DATABASE_URL'])
 
 
+@unittest.skipUnless(shutil.which('docker'), 'Docker Compose is required')
+class EmptyValueTests(unittest.TestCase):
+    """본보기의 빈 줄은 compose 를 거쳐 빈 문자열로 들어간다. 문자열 설정에는 '설정 안 됨'
+    이지만 불리언·숫자 설정에는 파싱 오류라 서비스가 부팅하지 못한다."""
+    STRING_LIKE = re.compile(r'(KEY|KEYS|SECRET|TOKEN|ID|PASSWORD|URL|URI|PATH|CONTACT|DSN)(_FALLBACK)?$')
+
+    def test_only_string_settings_reach_services_empty(self):
+        for compose in ('docker-compose.yml', 'docker-compose.admin.yml'):
+            result = subprocess.run(['docker', 'compose', '--env-file', generated_env(), '-f', compose,
+                                     '--profile', '*', 'config', '--format', 'json'],
+                                    cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, 'Compose must render')
+            for name, service in json.loads(result.stdout)['services'].items():
+                for key, value in (service.get('environment') or {}).items():
+                    if value == '':
+                        with self.subTest(compose=compose, service=name, key=key):
+                            self.assertRegex(key, self.STRING_LIKE)
+
+
 class TestStackOriginTests(unittest.TestCase):
     def test_test_stack_allows_the_hosting_origin_that_e2e_checks(self):
         # The generated test environment and the cross-origin check must name the same
