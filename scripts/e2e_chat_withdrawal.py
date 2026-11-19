@@ -6,7 +6,7 @@
 함께 지운다. 검증용 데이터베이스를 대상으로만 쓴다 — 계정을 실제로 지우기 때문이다.
 
 사용: ./scripts/e2e_chat_withdrawal.py --base <주소> --password <값> \
-        --owner maptester3@admin.map --member maptester4@admin.map
+        --owner maptester3@example.com --member maptester4@example.com
 """
 import argparse, json, subprocess, sys, urllib.error, urllib.request, uuid
 

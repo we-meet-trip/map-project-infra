@@ -50,7 +50,8 @@ x-app-env: &app-env
     ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:-}
     ADMIN_SESSION_COOKIE_NAME: ${ADMIN_SESSION_COOKIE_NAME:-admin_session}
     ADMIN_SESSION_TTL_MIN: ${ADMIN_SESSION_TTL_MIN:-720}
-    ADMIN_SESSION_COOKIE_SECURE: ${ADMIN_SESSION_COOKIE_SECURE:-false}
+    # 기본은 secure 다. 로컬 http 실행에서만 .env 로 false 를 준다(.env.example 설명).
+    ADMIN_SESSION_COOKIE_SECURE: ${ADMIN_SESSION_COOKIE_SECURE:-true}
     ADMIN_CORS_ORIGINS: ${ADMIN_CORS_ORIGINS:-[]}
     ADMIN_USER_BASE_URL: ${ADMIN_USER_BASE_URL:-http://user:8080}
     MAP_PROJECT_AGENT_BASE_URL: ${MAP_PROJECT_AGENT_BASE_URL:-http://agent:8000}
@@ -100,7 +101,7 @@ x-logging: &default-logging
       max-file: "3"
 
 services:
-  # admin — 운영 콘솔 JSON API 서버 (cut 2).
+  # admin — 운영 콘솔 JSON API 서버.
   # hub_data 직접 RO + admin_data 소유 RW(감사/계정/세션) + Redis 진단 RO
   # + hub/BFF `/internal` 위임. UI 는 별도 SPA(admin-web)가 담당한다.
   # 기동 시 entrypoint 가 alembic upgrade head(admin_data) 후 uvicorn 을 띄운다.

@@ -29,7 +29,7 @@ export MAP_PROJECT_POSTGRES_PASSWORD="$(grep -E '^MAP_PROJECT_POSTGRES_PASSWORD=
 export USER_JWT_PRIVATE_KEY="$(grep -E '^USER_JWT_PRIVATE_KEY=' "$ENVF" | cut -d= -f2-)"
 export USER_JWT_PUBLIC_KEY="$(grep -E '^USER_JWT_PUBLIC_KEY=' "$ENVF" | cut -d= -f2-)"
 export USER_AUTH_ENFORCED="$(grep -E '^USER_AUTH_ENFORCED=' "$ENVF" | cut -d= -f2-)"
-# 테스터 계정 시더. 켜져 있으면 부팅 때마다 maptester1..5@admin.map 을 보장한다.
+# 테스터 계정 시더. 켜져 있으면 부팅 때마다 maptester1..5@example.com 을 보장한다.
 # 키가 .env 에 없으면 위 방식은 빈 문자열을 내보내는데, 빈 값은 설정 파일의 기본값을
 # 이기고 boolean 변환에서 기동을 깨뜨린다 → 비어 있으면 아예 내보내지 않는다.
 export USER_TESTER_SEED_ENABLED="$(grep -E '^USER_TESTER_SEED_ENABLED=' "$ENVF" | cut -d= -f2-)"

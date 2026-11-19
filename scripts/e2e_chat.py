@@ -22,6 +22,10 @@ import urllib.request
 import uuid
 
 import websockets
+import datetime
+
+# 일정 날짜는 실행하는 날 기준 일주일 뒤로 둔다. 지난 날짜는 서버가 받지 않을 수 있다.
+TRIP_DAY = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
 
 NUL = "\x00"
 RESULTS = []
@@ -180,8 +184,8 @@ async def main():
     ws_url = base.replace("https://", "wss://").replace("http://", "ws://") + "/ws/chat"
 
     print(f"관문: {base}")
-    token_a = login(base, "maptester1@admin.map", args.password)
-    token_b = login(base, "maptester2@admin.map", args.password)
+    token_a = login(base, "maptester1@example.com", args.password)
+    token_b = login(base, "maptester2@example.com", args.password)
     record("서로 다른 두 사람이 각자 토큰을 받는다", token_a != token_b)
     for token in (token_a, token_b):
         ensure_consents(base, token)
@@ -193,11 +197,11 @@ async def main():
                          "address": "합성 주소 B", "lat": 37.4995, "lng": 127.0290,
                          "stay_minutes": 60}],
              "visit_order": [1], "legs": []}
-    seed_draft(args, job_id, draft, "maptester1@admin.map")
+    seed_draft(args, job_id, draft, "maptester1@example.com")
 
     status, body = http("POST", f"{base}/api/v1/schedules", token_a, {
-        "job_id": job_id, "title": "채팅 검사", "date_start": "2026-09-10",
-        "date_end": "2026-09-10", "transport": "walk"})
+        "job_id": job_id, "title": "채팅 검사", "date_start": TRIP_DAY,
+        "date_end": TRIP_DAY, "transport": "walk"})
     if status != 200:
         raise SystemExit(f"일정 저장 실패: {status} {body}")
     schedule_id = body["schedule_id"]

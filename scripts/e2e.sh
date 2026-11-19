@@ -16,8 +16,11 @@
 set -uo pipefail
 
 BASE="${BASE:-http://127.0.0.1:8090}"
-EMAIL="${E2E_EMAIL:-maptester1@admin.map}"
-PASSWORD="${E2E_PASSWORD:-change-me}"
+EMAIL="${E2E_EMAIL:-maptester1@example.com}"
+# 시험 계정 비밀번호는 기본값이 없다. 시험 스택 .env.test 의 USER_TESTER_SEED_PASSWORD 를 넣는다.
+PASSWORD="${E2E_PASSWORD:?시험 계정 비밀번호를 E2E_PASSWORD 로 넣는다(.env.test 의 USER_TESTER_SEED_PASSWORD)}"
+# 일정 날짜는 실행하는 날 기준 일주일 뒤로 둔다. 지난 날짜는 서버가 받지 않을 수 있다.
+DAY=$(python3 -c "import datetime;print(datetime.date.today()+datetime.timedelta(days=7))")
 WEB_ORIGIN="${E2E_WEB_ORIGIN:-https://app.example.com}"
 
 pass=0; fail=0; skip=0
@@ -77,7 +80,7 @@ expect "장소 검색" "200,400" "$(code "$BASE/api/v1/places?province=서울특
 expect "일정 목록" "200" "$(code "${AUTH[@]}" "$BASE/api/v1/schedules")"
 
 sec "5. 일정 생성 — 이미 만들어 둔 조건 (캐시로 답해야 한다)"
-WARM='{"schedule":{"start_date":"2026-09-05","end_date":"2026-09-05","active_start_hour":10,"active_end_hour":18},"budget":{"min":0,"max":100000},"themes":["산책"],"transport":"walk","location":{"province":"서울특별시","city":"종로구"}}'
+WARM='{"schedule":{"start_date":"'"$DAY"'","end_date":"'"$DAY"'","active_start_hour":10,"active_end_hour":18},"budget":{"min":0,"max":100000},"themes":["산책"],"transport":"walk","location":{"province":"서울특별시","city":"종로구"}}'
 t0=$(python3 -c 'import time;print(time.time())')
 resp=$(body -X POST "$BASE/api/v1/trip/generate" -H "Content-Type: application/json" "${AUTH[@]}" -d "$WARM")
 t1=$(python3 -c 'import time;print(time.time())')
@@ -148,7 +151,7 @@ fi
 sec "10. 일정 저장 이후 (저장 → 목록 → 상세 → 시작)"
 SID=""
 if [ -n "$tid" ]; then
-  SAVE="{\"job_id\":\"$tid\",\"title\":\"E2E 종로 산책\",\"date_start\":\"2026-09-05\",\"date_end\":\"2026-09-05\",\"transport\":\"walk\",\"active_start_hour\":10,\"active_end_hour\":18}"
+  SAVE="{\"job_id\":\"$tid\",\"title\":\"E2E 종로 산책\",\"date_start\":\"$DAY\",\"date_end\":\"$DAY\",\"transport\":\"walk\",\"active_start_hour\":10,\"active_end_hour\":18}"
   sresp=$(body -X POST "$BASE/api/v1/schedules" -H "Content-Type: application/json" "${AUTH[@]}" -d "$SAVE")
   SID=$(printf '%s' "$sresp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('schedule_id',''))" 2>/dev/null)
   [ -n "$SID" ] && ok "만든 일정이 저장된다 (schedule_id=$SID)" \
@@ -203,7 +206,7 @@ sec "12. 재탐색 (다시 짜기)"
 if [ -n "$tid" ]; then
   # 재탐색은 만들 때와 같은 본문을 받아 초안을 버리고 다시 짠다. 여기서만
   # 모델을 실제로 부른다 — 캐시로는 "다시 짜기" 를 검증할 수 없다.
-  RESEARCH='{"date":{"date_start":"2026-09-05","date_end":"2026-09-05","time_start":"10:00:00","time_end":"18:00:00"},"budget":100000,"theme":["산책"],"mobility":"walk","province":"서울특별시","city":"종로구"}'
+  RESEARCH='{"date":{"date_start":"'"$DAY"'","date_end":"'"$DAY"'","time_start":"10:00:00","time_end":"18:00:00"},"budget":100000,"theme":["산책"],"mobility":"walk","province":"서울특별시","city":"종로구"}'
   rc=$(code -X POST "$BASE/api/v1/recommend/$tid/research" -H "Content-Type: application/json" \
         "${AUTH[@]}" -d "$RESEARCH")
   case ",202,200,409," in *",$rc,"*) ok "재탐색이 접수된다 ($rc)";; *) no "재탐색이 접수된다" "실제 $rc";; esac

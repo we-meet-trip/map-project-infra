@@ -1,9 +1,8 @@
 -- =========================================================================
--- map-project-infra / postgres 초기화 스크립트
+-- map-project-infra / postgres 스키마 준비
 --
--- postgres 컨테이너 entrypoint(`/docker-entrypoint-initdb.d`)가 첫 부팅 시
--- 1회 실행한다. 멱등(idempotent) — CREATE IF NOT EXISTS 만 사용하므로
--- 볼륨이 재사용되거나 스크립트가 재실행되어도 안전하다.
+-- db/setup/setup.sh 의 platform 단계가 user 부트스트랩 뒤에 실행한다(compose 의
+-- db-platform). 멱등 — CREATE IF NOT EXISTS 만 사용하므로 다시 돌려도 안전하다.
 -- POSTGRES_USER 환경변수가 변경되어도 동작하도록 current_user 를
 -- 동적으로 사용한다(특정 사용자명에 하드코딩하지 않음).
 -- =========================================================================
@@ -17,7 +16,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 --   user_service : 사용자/계정/즐겨찾기 등 user 서비스 영역(Spring 측 BFF 소유)
 --   hub_data     : 외부 데이터(날씨/지역 등) 캐시 영역(hub 서비스 소유)
 --   langgraph    : LangGraph 체크포인트/상태 저장 영역(agent 서비스 소유)
---   admin_data   : 운영 감사/계정/세션 영역(admin 서비스 소유, D15/cut2)
+--   admin_data   : 운영 감사/계정/세션 영역(admin 서비스 소유)
 -- 각 서비스는 자기 스키마 외부의 테이블에 직접 쓰기 접근하지 않는 것이 원칙.
 -- admin_data 는 여기서 생성만 하고, 소유권은 map_admin 역할 생성 이후
 -- 10-admin.sh 에서 이전한다(ALTER SCHEMA ... OWNER TO map_admin).

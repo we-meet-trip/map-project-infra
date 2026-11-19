@@ -89,9 +89,9 @@ async def main():
         if status != 200: raise SystemExit(f"로그인 실패 {email}: {status} {body}")
         return body["accessToken"]
 
-    token_a, token_b = login("maptester1@admin.map"), login("maptester2@admin.map")
-    uid_a = sql(args.pg, args.db, "select id from user_service.users where email='maptester1@admin.map'")
-    uid_b = sql(args.pg, args.db, "select id from user_service.users where email='maptester2@admin.map'")
+    token_a, token_b = login("maptester1@example.com"), login("maptester2@example.com")
+    uid_a = sql(args.pg, args.db, "select id from user_service.users where email='maptester1@example.com'")
+    uid_b = sql(args.pg, args.db, "select id from user_service.users where email='maptester2@example.com'")
 
     # 추천 흐름을 거치지 않고 일정만 직접 심는다. 방은 일정에만 매인다.
     schedule_id = sql(args.pg, args.db,

@@ -25,6 +25,10 @@ import sys
 import urllib.error
 import urllib.request
 import uuid
+import datetime
+
+# 일정 날짜는 실행하는 날 기준 일주일 뒤로 둔다. 지난 날짜는 서버가 받지 않을 수 있다.
+TRIP_DAY = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
 
 RESULTS: list[tuple[str, str, bool, str]] = []
 SECTION = ""
@@ -200,7 +204,7 @@ def main() -> int:
     # ── 인증 ────────────────────────────────────────────────────────────
     section("인증")
     status, body = http("POST", f"{base}/api/v1/auth/login",
-                        body={"email": "maptester1@admin.map", "password": password})
+                        body={"email": "maptester1@example.com", "password": password})
     token = body.get("accessToken") if status == 200 else None
     check("시험 계정으로 로그인된다", bool(token), f"status={status}")
     if not token:
@@ -238,8 +242,8 @@ def main() -> int:
          "EX", "3600")
 
     status, saved = http("POST", f"{base}/api/v1/schedules", token, {
-        "job_id": job, "title": "검증 일정", "date_start": "2026-09-20",
-        "date_end": "2026-09-20", "transport": "walk"})
+        "job_id": job, "title": "검증 일정", "date_start": TRIP_DAY,
+        "date_end": TRIP_DAY, "transport": "walk"})
     sid = saved.get("schedule_id")
     check("일정이 저장된다", status == 200 and sid is not None, f"status={status}")
 

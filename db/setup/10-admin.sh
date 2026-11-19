@@ -2,18 +2,13 @@
 # =========================================================================
 # map-project-infra / postgres 초기화 — map_admin 읽기전용 역할 (admin 모니터링)
 #
-# postgres 컨테이너 entrypoint(/docker-entrypoint-initdb.d)가 최초 부팅 시
-# 00-create-schemas.sql 다음(사전 순)에 1회 실행한다.
-#
-# 중요: initdb.d 는 "빈 데이터 볼륨의 최초 부팅"에만 자동 실행된다. 이미
-# postgres-data 볼륨이 있는 환경에서는 자동 실행되지 않으므로, 아래를 1회
-# 수동 적용해야 한다(멱등이라 반복 안전):
-#   docker compose exec postgres bash /docker-entrypoint-initdb.d/10-admin.sh
+# db/setup/setup.sh 의 platform 단계가 00-create-schemas.sql 다음에 실행한다.
+# 멱등이라 compose 를 다시 올릴 때마다 돌아도 안전하다.
 #
 # 비밀번호는 MAP_PROJECT_ADMIN_DB_PASSWORD(컨테이너 env, 공유 .env 유래) 단일 출처에서
 # 온다. admin 컨테이너의 ADMIN_DATABASE_URL 비밀번호와 반드시 일치해야 한다.
 #
-# cut2(2026-07-13): admin_data 스키마 소유권을 map_admin 으로 이전한다.
+# admin_data 스키마 소유권을 map_admin 으로 넘긴다.
 #   - hub_data 는 계속 SELECT-only(읽기전용 4중 보장의 DB 계층 유지).
 #   - admin_data 는 map_admin 소유 → admin 레포 Alembic 이 이 DSN 으로
 #     테이블(audit_logs/admin_accounts/admin_sessions)을 생성·관리한다.
