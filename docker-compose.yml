@@ -50,10 +50,129 @@ x-logging: &default-logging
       max-size: "10m"
       max-file: "3"
 
+# 빈 데이터 볼륨에서 DB 를 준비하는 psql 단계의 공통 틀(db/setup/setup.sh).
+# 서비스가 아니라 끝나면 멈추는 작업이다. 모든 단계는 다시 돌려도 안전해서 두 번째
+# up 부터는 할 일 없이 지나간다. 역할 SQL 은 형제 레포의 것을 읽기 전용으로 붙인다.
+x-db-setup: &db-setup
+  image: postgis/postgis:17-3.5
+  platform: linux/amd64
+  profiles: ["backend", "full"]
+  restart: "no"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  entrypoint: ["bash", "/setup/setup.sh"]
+  environment:
+    MAP_PROJECT_POSTGRES_DB:
+    MAP_PROJECT_POSTGRES_USER:
+    MAP_PROJECT_POSTGRES_PASSWORD:
+    MAP_PROJECT_ADMIN_DB_PASSWORD:
+    USER_BOOTSTRAP_MARKER:
+    USER_BOOTSTRAP_PASSWORD:
+    USER_DATABASE_PASSWORD:
+    USER_MIGRATION_PASSWORD:
+    HUB_DATABASE_URL:
+    HUB_MIGRATION_DATABASE_URL:
+    AGENT_DATABASE_PASSWORD:
+    AGENT_CHECKPOINT_MIGRATION_DSN:
+    MAP_PROJECT_POSTGRES_EXPORTER_DSN:
+  volumes:
+    - ./db/setup:/setup:ro
+    - ../map-project-user/scripts/sql:/sql/user:ro
+    - ../map-project-hub/scripts/database-roles.sql:/sql/hub/database-roles.sql:ro
+    - ../map-project-agent/scripts/database-roles.sql:/sql/agent/database-roles.sql:ro
+    - db-setup-state:/state
+
 services:
+  # ── 빈 DB 준비 사슬(위에서 아래 순서, 각 단계는 앞 단계가 성공으로 끝나야 시작) ──
+  # user 는 빈 DB 에서만 부트스트랩하고(psql 준비 → user 이미지 부트스트랩 → psql 활성화 →
+  # user 이미지 마이그레이션), 그 뒤에 PostGIS·나머지 스키마·hub/agent/admin 역할을 만든다.
+  # hub 의 첫 마이그레이션은 잠시 받은 권한으로 돌고, 마지막 단계가 그 권한을 거둔다.
+  db-user-prepare:
+    <<: [*default-logging, *db-setup]
+    command: ["user-prepare"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  user-db-bootstrap:
+    <<: *default-logging
+    build:
+      context: ../map-project-user
+    profiles: ["backend", "full"]
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    # 준비 단계가 이번에 새로 연 경우에만 돈다. 이미 끝난 DB 에서 다시 돌면 거절되기 때문이다.
+    entrypoint: ["sh", "-c", "[ -f /state/user-bootstrap.pending ] || { echo 'user 부트스트랩: 이미 끝남 — 건너뜀'; exit 0; }; exec java -Xmx192m -Dloader.main=map.bootstrap.UserBootstrapApplication -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher bootstrap"]
+    environment:
+      USER_BOOTSTRAP_URL: jdbc:postgresql://postgres:5432/${MAP_PROJECT_POSTGRES_DB}
+      USER_BOOTSTRAP_USERNAME: map_user_bootstrap
+      USER_BOOTSTRAP_EXPECTED_DATABASE: ${MAP_PROJECT_POSTGRES_DB}
+      USER_BOOTSTRAP_PASSWORD:
+      USER_BOOTSTRAP_MARKER:
+    volumes:
+      - db-setup-state:/state:ro
+    depends_on:
+      db-user-prepare:
+        condition: service_completed_successfully
+
+  db-user-activate:
+    <<: [*default-logging, *db-setup]
+    command: ["user-activate"]
+    depends_on:
+      user-db-bootstrap:
+        condition: service_completed_successfully
+
+  user-db-migrate:
+    <<: *default-logging
+    build:
+      context: ../map-project-user
+    profiles: ["backend", "full"]
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    entrypoint: ["java", "-Xmx256m", "-Dloader.main=map.migration.UserMigrationApplication", "-cp", "/app/app.jar", "org.springframework.boot.loader.launch.PropertiesLauncher", "migrate"]
+    environment:
+      USER_MIGRATION_URL:
+      USER_MIGRATION_USERNAME:
+      USER_MIGRATION_PASSWORD:
+    depends_on:
+      db-user-activate:
+        condition: service_completed_successfully
+
+  db-platform:
+    <<: [*default-logging, *db-setup]
+    command: ["platform"]
+    depends_on:
+      user-db-migrate:
+        condition: service_completed_successfully
+
+  hub-db-migrate:
+    <<: *default-logging
+    build:
+      context: ../map-project-hub
+    profiles: ["backend", "full"]
+    restart: "no"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    # 마이그레이션 자격 하나만 준다. 서빙 자격이 함께 있으면 hub 가 실행을 거부한다.
+    entrypoint: ["python", "-m", "map_project_hub.db.migrate"]
+    environment:
+      HUB_MIGRATION_DATABASE_URL:
+    depends_on:
+      db-platform:
+        condition: service_completed_successfully
+
+  db-finish:
+    <<: [*default-logging, *db-setup]
+    command: ["finish"]
+    depends_on:
+      hub-db-migrate:
+        condition: service_completed_successfully
+
   # postgres — PostGIS 확장이 포함된 메인 RDB.
-  # init 디렉터리(./db/init)의 SQL 을 최초 부팅 시 자동 실행하여
-  # hub_data 등 스키마를 사전 생성한다.
+  # 첫 부팅에는 아무 SQL 도 돌리지 않는다. user 의 빈 DB 부트스트랩이 확장도 스키마도
+  # 없는 DB 를 요구하므로, 스키마·역할·확장은 아래 db-* 일회성 단계가 순서대로 만든다.
   # ports: 호스트 5432 (루프백) → 컨테이너 5432
   postgres:
     <<: *default-logging
@@ -77,14 +196,15 @@ services:
       POSTGRES_DB: ${MAP_PROJECT_POSTGRES_DB}
       POSTGRES_USER: ${MAP_PROJECT_POSTGRES_USER}
       POSTGRES_PASSWORD: ${MAP_PROJECT_POSTGRES_PASSWORD}
-      # db/init/10-admin.sh 가 map_admin 읽기전용 역할을 만들 때 사용.
-      # 관리자 스택 admin 컨테이너의 ADMIN_DATABASE_URL 비밀번호와 반드시 일치.
-      MAP_PROJECT_ADMIN_DB_PASSWORD: ${MAP_PROJECT_ADMIN_DB_PASSWORD}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
+    # 이미지가 가진 첫 부팅 스크립트(PostGIS·topology·tiger 를 깔아 둔다)를 빈 자리로
+    # 덮는다. 그 스크립트가 돌면 user 의 빈 DB 부트스트랩이 거절된다. PostGIS 는
+    # db-platform 단계가 필요한 것만 public 에 깐다.
+    tmpfs:
+      - /docker-entrypoint-initdb.d
     healthcheck:
       # -h 를 준다. 빼면 초기화 중에 잠깐 뜨는 내부 서버에도 응답이 와서,
       # 아직 받을 수 없는 상태를 준비됐다고 읽는다. 빈 볼륨 첫 부팅에서만
@@ -348,6 +468,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-finish:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:
@@ -571,6 +693,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-finish:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8001:8000"
     healthcheck:
@@ -701,6 +825,8 @@ volumes:
   postgres-data:
   redis-data:
   osrm-data:
+  # DB 준비 단계끼리 "이번에 user 부트스트랩을 새로 열었다" 는 사실만 주고받는 자리.
+  db-setup-state:
 
 # networks — 두 스택이 공유하는 브리지 네트워크. 이 파일이 소유자다.
 # 서비스 간 통신은 컨테이너 이름이 아니라 서비스 이름(postgres, redis, hub …)으로

@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from localenv import generated_env
 
 ROOT = Path(__file__).resolve().parent.parent
 # An unquoted shell expansion splits a value at spaces, so argv is searched for MARK.
@@ -24,7 +25,7 @@ STUB = ('#!/usr/bin/env python3\nimport json, os, signal, sys\n'
 
 class ShellSourceTests(unittest.TestCase):
     def test_admin_role_script_reads_the_password_inside_psql(self):
-        text = (ROOT / 'db/init/10-admin.sh').read_text()
+        text = (ROOT / 'db/setup/10-admin.sh').read_text()
         self.assertNotRegex(text, r'-v +\w*pw\w*=')
         self.assertIn("<<'EOSQL'\n\\getenv mapadminpw MAP_PROJECT_ADMIN_DB_PASSWORD\n", text)
 
@@ -46,7 +47,7 @@ class RolloverArgvTests(unittest.TestCase):
 @unittest.skipUnless(shutil.which('docker'), 'Docker Compose is required')
 class ComposeShellTests(unittest.TestCase):
     def render(self, *files):
-        result = subprocess.run(['docker', 'compose', '--env-file', '.env.example',
+        result = subprocess.run(['docker', 'compose', '--env-file', generated_env(),
                                  *(arg for name in files for arg in ('-f', name)),
                                  '--profile', 'full', 'config', '--format', 'json'],
                                 cwd=ROOT, capture_output=True, text=True,

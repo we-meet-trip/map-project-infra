@@ -6,13 +6,14 @@ import re
 import shutil
 import subprocess
 import unittest
+from localenv import generated_env
 
 ROOT = Path(__file__).resolve().parent.parent
 
 @unittest.skipUnless(shutil.which('docker'), 'Docker Compose is required')
 class ServiceEnvironmentTests(unittest.TestCase):
     def test_secret_access_is_limited_to_its_consumers(self):
-        result = subprocess.run(['docker','compose','--env-file','.env.example','-f','docker-compose.yml',
+        result = subprocess.run(['docker','compose','--env-file',generated_env(),'-f','docker-compose.yml',
                                  '--profile','full','--profile','vision','config','--format','json'],
                                 cwd=ROOT, capture_output=True, text=True,
                                 env={**os.environ,'USER_JWT_PRIVATE_KEY':'sentinel-signing-key',

@@ -42,7 +42,7 @@ jobs:
       # 값의 내용이 아니라 채워졌는지만 보므로 이것으로 충분하다.
       - name: prepare env
         run: |
-          cp .env.example .env
+          ./scripts/make-local-env.sh --force
           ./scripts/make-test-env.sh --force
 
       - name: compose syntax

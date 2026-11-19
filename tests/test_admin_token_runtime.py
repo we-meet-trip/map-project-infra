@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import unittest
+from localenv import generated_env
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -12,7 +13,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class AdminTokenRuntimeTests(unittest.TestCase):
     def render(self, compose, **values):
         env={**os.environ,"MAP_PROJECT_USER_ADMIN_INTERNAL_TOKEN":"synthetic-management-only",**values}
-        run=subprocess.run(["docker","compose","--env-file",".env.example","-f",compose,
+        run=subprocess.run(["docker","compose","--env-file",generated_env(),"-f",compose,
                             "--profile","*","config","--format","json"],cwd=ROOT,env=env,
                            capture_output=True,text=True,timeout=20)
         self.assertEqual(run.returncode,0,"Compose must render")
