@@ -118,6 +118,9 @@ finish() {
   { var db "$DB"; printf '%s\n' "SELECT format('REVOKE CREATE ON DATABASE %I FROM map_hub_owner', :'db') \\gexec"; } | psql_run
   psql_run -f "$SQL_HUB"
   psql_run -f "$SQL_AGENT"
+  # 관리 콘솔은 hub 표를 읽기만 한다. 기본 권한이 생기기 전에 만들어진 표(이미 있던 볼륨)도
+  # 덮도록 지금 있는 표 전부에 다시 준다 — 몇 번을 돌려도 결과는 같다.
+  psql_run -c "GRANT SELECT ON ALL TABLES IN SCHEMA hub_data TO map_admin"
   echo "finish: 끝"
 }
 

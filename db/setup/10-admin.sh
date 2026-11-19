@@ -36,7 +36,11 @@ ALTER ROLE map_admin LOGIN PASSWORD :'mapadminpw';
 --  ALTER DEFAULT PRIVILEGES 가 이후 hub Alembic 이 만드는 테이블을 자동 커버.)
 GRANT USAGE ON SCHEMA hub_data TO map_admin;
 GRANT SELECT ON ALL TABLES IN SCHEMA hub_data TO map_admin;
-ALTER DEFAULT PRIVILEGES IN SCHEMA hub_data GRANT SELECT ON TABLES TO map_admin;
+-- hub 표는 hub 의 소유 역할(map_hub_owner)이 만든다. 기본 권한은 표를 만드는 역할마다 따로
+-- 걸리므로 FOR ROLE 로 그 역할을 지정한다(빼면 이 스크립트를 돌린 운영자 역할이 만드는 표에만
+-- 적용되어, hub 마이그레이션이 만든 표를 콘솔이 읽지 못한다). 이 역할은 같은 platform 단계에서
+-- hub 역할 SQL 이 먼저 만든다.
+ALTER DEFAULT PRIVILEGES FOR ROLE map_hub_owner IN SCHEMA hub_data GRANT SELECT ON TABLES TO map_admin;
 
 -- admin_data 소유권 이전: map_admin 이 admin_data 를 소유(RW).
 -- 00-create-schemas.sql 이 admin_data 를 superuser 소유로 생성해 두었으므로,
