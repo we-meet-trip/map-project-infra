@@ -497,6 +497,7 @@ services:
     security_opt: [no-new-privileges:true]
     build:
       context: ../map-project-agent
+    image: map-project-agent:local
     container_name: map-project-agent
     environment:
       AGENT_AUTH_ENFORCED:
@@ -741,6 +742,7 @@ services:
     security_opt: [no-new-privileges:true]
     build:
       context: ../map-project-yolo
+    image: map-project-yolo:local
     container_name: map-project-yolo
     <<: *default-logging
     environment:

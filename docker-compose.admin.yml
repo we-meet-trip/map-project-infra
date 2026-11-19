@@ -113,6 +113,7 @@ services:
     <<: [*default-logging, *app-env]
     build:
       context: ../map-project-admin
+    image: map-project-admin:local
     container_name: map-admin-api
     restart: unless-stopped
     # hub 와 같은 얼개의 파이썬 서버인데 일정 실행기가 없어 더 가볍다.
@@ -145,6 +146,7 @@ services:
     <<: *default-logging
     build:
       context: ../map-project-admin/web
+    image: map-project-admin-web:local
     container_name: map-admin-web
     restart: unless-stopped
     depends_on:

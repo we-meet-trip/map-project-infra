@@ -57,7 +57,7 @@
 
 ## 이미지 이름
 
-로컬 빌드: `map-project-user:local`, `map-project-hub:local`(DB 준비 단계와 서빙이 나눠 쓴다), agent·yolo·admin 은 compose 기본 이름. 받아 쓰기 덧칠(`docker-compose.registry.yml`·`docker-compose.admin.registry.yml`): `${MAP_PROJECT_IMAGE_REGISTRY}/map-project-<서비스>:${MAP_PROJECT_IMAGE_TAG}` — 이 저장소는 이미지를 게시하지 않으므로 직접 빌드해 올린 레지스트리를 적는다.
+로컬 빌드: `map-project-<서비스>:local`(user·agent·hub·yolo·admin·admin-web). user·hub 이미지는 DB 준비 단계와 서빙이 나눠 쓴다. compose 프로젝트 이름을 바꿔도 이미지 이름은 그대로다. 받아 쓰기 덧칠(`docker-compose.registry.yml`·`docker-compose.admin.registry.yml`): `${MAP_PROJECT_IMAGE_REGISTRY}/map-project-<서비스>:${MAP_PROJECT_IMAGE_TAG}` — 이 저장소는 이미지를 게시하지 않으므로 직접 빌드해 올린 레지스트리를 적는다.
 
 ## 소유
 
