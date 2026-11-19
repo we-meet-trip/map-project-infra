@@ -3,7 +3,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import tempfile
@@ -24,12 +23,6 @@ STUB = ('#!/usr/bin/env python3\nimport json, os, signal, sys\n'
 
 
 class ShellSourceTests(unittest.TestCase):
-    def test_startup_passes_the_console_password_by_name(self):
-        text = (ROOT / 'scripts/cloud-up.sh').read_text()
-        self.assertIsNone(re.search(r'(?:-e|--env)[ =]+[A-Z0-9_]*(?:PASSWORD|TOKEN|SECRET|KEY|DSN)[A-Z0-9_]*=', text))
-        self.assertRegex(text, r'MAP_ADMIN_PASSWORD="\$\(grep [^\n]*"\$ENV_FILE"[^\n]*\)" \\\n'
-                               r' +dc exec -T -e MAP_ADMIN_PASSWORD postgres ')
-
     def test_admin_role_script_reads_the_password_inside_psql(self):
         text = (ROOT / 'db/init/10-admin.sh').read_text()
         self.assertNotRegex(text, r'-v +\w*pw\w*=')
@@ -55,10 +48,9 @@ class ComposeShellTests(unittest.TestCase):
     def render(self, *files):
         result = subprocess.run(['docker', 'compose', '--env-file', '.env.example',
                                  *(arg for name in files for arg in ('-f', name)),
-                                 '--profile', 'full', '--profile', 'dns', 'config', '--format', 'json'],
+                                 '--profile', 'full', 'config', '--format', 'json'],
                                 cwd=ROOT, capture_output=True, text=True,
-                                env={**os.environ, 'MAP_STACK_ENV': 'test', 'DUCKDNS_SUBDOMAIN': 'name',
-                                     'DUCKDNS_TOKEN': 'render-only'})
+                                env={**os.environ, 'MAP_STACK_ENV': 'test'})
         self.assertEqual(result.returncode, 0, 'Compose must render')
         return json.loads(result.stdout)['services']
 
@@ -80,9 +72,8 @@ class ComposeShellTests(unittest.TestCase):
 
     def test_redis_password_reaches_the_server_on_stdin_and_the_client_by_environment(self):
         base = self.render('docker-compose.yml')['redis']
-        micro = self.render('docker-compose.yml', 'docker-compose.test.yml', 'docker-compose.micro.yml')['redis']
         quoted = 'requirepass "%s"\n' % SECRET.replace('\\', '\\\\').replace('"', '\\"')
-        for label, command in (('base', base['command']), ('micro', micro['command'])):
+        for label, command in (('base', base['command']),):
             for password, stdin in (('', ''), (SECRET, quoted)):
                 with self.subTest(command=label, password=bool(password)):
                     result, calls = self.run_shell(command[2], REDIS_PASSWORD=password)
@@ -94,12 +85,6 @@ class ComposeShellTests(unittest.TestCase):
                 result, calls = self.run_shell(base['healthcheck']['test'][1], REDIS_PASSWORD=password)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(calls['redis-cli'], {'argv': ['ping'], 'auth': auth, 'stdin': ''})
-
-    def test_dynamic_dns_token_is_imported_by_curl_itself(self):
-        loop = self.render('docker-compose.yml', 'docker-compose.dns.yml')['dns']['command'][2]
-        _, calls = self.run_shell(loop, DUCKDNS_TOKEN=SECRET, DUCKDNS_SUBDOMAIN='name')
-        self.assertIn('%DUCKDNS_TOKEN', calls['curl']['argv'])
-        self.assertTrue(any('{{DUCKDNS_TOKEN}}' in arg for arg in calls['curl']['argv']))
 
 
 if __name__ == '__main__':

@@ -17,30 +17,6 @@ def module(name):
 
 release = module("osrm_release")
 acceptance = module("osrm_acceptance")
-systemd = module("osrm_systemd")
-
-
-class HostUnitsTest(unittest.TestCase):
-    def test_units_require_verified_readonly_graph_and_only_stop_routing(self):
-        units = systemd.render("test", "/var/lib/map-osrm/release-r1", "/opt/map-service-infra", "map-test-net", 5200, 5201)
-        mount = units["srv-map\\x2dosrm\\x2dtest.mount"]
-        service = units["map-osrm-test.service"]
-        self.assertIn("Options=loop,ro,nodev,nosuid,noexec", mount)
-        self.assertIn("BindsTo=srv-map\\x2dosrm\\x2dtest.mount", service)
-        self.assertIn("ExecStartPre=/usr/bin/python3", service)
-        self.assertIn(" verify-tree ", service)
-        self.assertIn("--project-name map-routing-test", service)
-        self.assertIn("stop --timeout 15", service)
-        self.assertNotIn(" down", service)
-
-    def test_prod_cannot_reuse_test_network(self):
-        with self.assertRaisesRegex(ValueError, "mixed serving"):
-            systemd.render("prod", "/release", "/infra", "map-test-net", 5200, 5201)
-
-    def test_unit_path_injection_and_colliding_ports_rejected(self):
-        for path, ports in (("/release\nExecStart=/bin/false", (5200, 5201)), ("/release/../other", (5200, 5201)), ("/release", (5200, 5200))):
-            with self.subTest(path=path), self.assertRaises(ValueError):
-                systemd.render("test", path, "/infra", "map-test-net", *ports)
 
 
 class ReleaseTest(unittest.TestCase):

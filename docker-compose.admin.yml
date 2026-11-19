@@ -32,7 +32,7 @@
 # 아니라서 평소에는 훨씬 적게 쓴다.
 #
 # 받아 쓰기: docker-compose.admin.registry.yml 을 함께 얹으면 만들지 않고
-# 받아 온다. 시험 스택 곁에 세울 때는 docker-compose.admin.test.yml 을 얹는다.
+# 받아 온다.
 
 name: map-admin
 

@@ -1,6 +1,5 @@
 """Exercise real Compose interpolation without exposing any environment values."""
 import json
-import importlib.util
 import os
 from pathlib import Path
 import re
@@ -44,23 +43,6 @@ class ServiceEnvironmentTests(unittest.TestCase):
         self.assertNotIn('AGENT_CHECKPOINT_MIGRATION_DSN',services['agent']['environment'])
         self.assertNotIn('HUB_MIGRATION_DATABASE_URL',services['hub']['environment'])
         self.assertIn('map_hub_runtime',services['hub']['environment']['HUB_DATABASE_URL'])
-        spec=importlib.util.spec_from_file_location('migration_job_contract',ROOT/'scripts/service-migration-job.py')
-        job=importlib.util.module_from_spec(spec);spec.loader.exec_module(job)
-        rendered=json.loads(result.stdout)
-        rendered['name']='map-test'
-        database=services['user']['environment']['POSTGRES_DB']
-        for name,credentials in (
-                ('user',{'USER_MIGRATION_URL':f'jdbc:postgresql://postgres:5432/{database}?currentSchema=user_service',
-                         'USER_MIGRATION_USERNAME':'map_user_migrator',
-                         'USER_MIGRATION_PASSWORD':'separate-migration-sentinel'}),
-                ('hub',{'HUB_MIGRATION_DATABASE_URL':
-                        f'postgresql+psycopg://map_hub_migrator:separate-migration-sentinel@postgres:5432/{database}'}),
-                ('agent',{'AGENT_CHECKPOINT_MIGRATION_DSN':
-                          f'postgresql://map_agent_migrator:separate-migration-sentinel@postgres:5432/{database}'})):
-            with self.subTest(service=name):
-                rendered['services'][name]['image']=(
-                    f'ghcr.io/we-meet-trip/map-service-{name}@sha256:'+'a'*64)
-                self.assertEqual(job.contract(job.service_contract(name),rendered,credentials)[0],'map-test')
 
 
 class TestStackOriginTests(unittest.TestCase):

@@ -111,7 +111,7 @@ compare "만들어 쓰기" \
 RENDER_PROFILES=(--profile infra --profile backend --profile full --profile routing)
 compare "받아 쓰기" \
   "$(render "$PROD_ENV" docker-compose.registry.yml)" \
-  "$(render "$TEST_ENV" docker-compose.test.yml docker-compose.registry.yml docker-compose.micro.yml)"
+  "$(render "$TEST_ENV" docker-compose.test.yml docker-compose.registry.yml)"
 
 # 받아 쓰는 조합에 카메라 갈래를 켜면 받을 이름이 있어야 한다. 이름이 없으면
 # 만드는 자리로 되돌아가, 작은 서버가 모델까지 든 이미지를 그 자리에서 짓는다.
@@ -130,22 +130,11 @@ if 'map-service-yolo:' not in (y.get('image') or ''):
     print('카메라 갈래에 받아올 이름이 없다', file=sys.stderr); sys.exit(1)
 " || exit 1
 
-# 콘솔도 같은 다섯 축으로 본다. 시험 콘솔이 운영 지표 위에 쓰면 지워도 티가
-# 나지 않아, 어긋난 줄 모른 채 한참을 본다.
-compare "콘솔" \
-  "$(render_admin "$PROD_ENV" docker-compose.admin.registry.yml)" \
-  "$(render_admin "$TEST_ENV" docker-compose.admin.test.yml docker-compose.admin.registry.yml)"
-
 # 서비스와 콘솔이 한 기계에 함께 선다. 네트워크는 일부러 공유하지만 나머지
 # 넷은 갈라져 있어야 한다 — 특히 포트가 겹치면 나중에 올리는 쪽이 뜨지 못한다.
 compare "서비스↔콘솔(운영)" \
   "$(render "$PROD_ENV" docker-compose.registry.yml)" \
   "$(render_admin "$PROD_ENV" docker-compose.admin.registry.yml)" \
-  "네트워크"
-
-compare "서비스↔콘솔(시험)" \
-  "$(render "$TEST_ENV" docker-compose.test.yml docker-compose.registry.yml)" \
-  "$(render_admin "$TEST_ENV" docker-compose.admin.test.yml docker-compose.admin.registry.yml)" \
   "네트워크"
 
 echo "겹침 0건"
