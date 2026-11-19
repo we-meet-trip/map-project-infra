@@ -1,236 +1,166 @@
-# map-service-infra
+# map-project-infra
 
-MAP 서비스의 인프라 오케스트레이션 레포. 다른 6 레포(admin · agent · client · hub · user · yolo) 위에 위치하며 컨테이너 구성·환경변수·DB 초기화를 단독 보유한다.
+MAP 일곱 저장소를 한 기계에서 함께 띄우는 실행 구성(Docker Compose)과 전체 안내. 외부 키 없이 빈 볼륨에서 바로 띄울 수 있다.
 
-## 두 개의 스택
+## 저장소 지도
 
-컨테이너를 역할로 갈라 두 스택으로 운영한다. 평소 개발에는 서비스 스택만 띄우고, 운영 화면이 필요할 때 관리자 스택을 추가로 올린다.
+MAP 는 일곱 저장소로 이루어져 있다. 전체 구조와 한 번에 실행하는 방법은 [map-project-infra](https://github.com/we-meet-trip/map-project-infra) 에서 시작한다.
 
-| 스택 | 파일 | 프로젝트명 | 서비스 |
-|---|---|---|---|
-| 서비스 | `docker-compose.yml` | `map-service` | postgres · redis · user · agent · hub · yolo · proxy · osrm-foot · osrm-bicycle |
-| 관리자 | `docker-compose.admin.yml` | `map-admin` | admin · admin-web · prometheus · grafana · exporter 3종 |
+| 저장소 | 역할 |
+|---|---|
+| **[map-project-infra](https://github.com/we-meet-trip/map-project-infra)** | **전체 안내, 로컬 실행 구성(Docker Compose), DB 초기화** |
+| [map-project-client](https://github.com/we-meet-trip/map-project-client) | 모바일 앱(Flutter, iOS·Android) |
+| [map-project-user](https://github.com/we-meet-trip/map-project-user) | 사용자 BFF(Spring Boot): 인증·일정·채팅·동의, 다른 서비스 중계 |
+| [map-project-agent](https://github.com/we-meet-trip/map-project-agent) | 추천 에이전트(FastAPI·LangGraph): 장소·경로·일정 생성 |
+| [map-project-hub](https://github.com/we-meet-trip/map-project-hub) | 외부 데이터 게이트웨이(FastAPI·PostGIS): 관광·날씨·장소·경로 |
+| [map-project-yolo](https://github.com/we-meet-trip/map-project-yolo) | 비전 서비스(WebSocket, 객체 탐지 + LLM 식별) |
+| [map-project-admin](https://github.com/we-meet-trip/map-project-admin) | 운영 콘솔(FastAPI·React) |
 
-- 컨테이너 이름은 `map-service-hub`, `map-admin-prometheus` 처럼 스택과 역할이 드러나게 고정한다(운영 콘솔 API 만 `map-admin-api`).
-- 네트워크 `map-net` 은 **서비스 스택이 소유**한다. 그래서 **기동은 서비스 → 관리자**, **종료는 관리자 → 서비스** 순서여야 한다.
-- 데이터 볼륨 이름은 `map_postgres-data` 처럼 고정해 두었다. 프로젝트명을 바꾸기 전에 쌓인 데이터를 그대로 이어 쓰기 위해서다. 단 `osrm-data` 만 접두 없이 그 이름 그대로이며, `scripts/osrm-rebuild.sh` 의 `OSRM_VOLUME` 기본값과 짝을 이룬다.
-- 이름을 고정한 대가로 **`docker compose down -v` 가 볼륨을 지우지 못한다.** 볼륨 라벨은 옛 프로젝트명 `map` 이고 현재 프로젝트명은 `map-service` 라 대상으로 잡히지 않는다(osrm-data 는 라벨 자체가 없다). 지울 때는 `docker volume rm <이름>` 으로 명시한다.
+## 이름의 뜻
 
-## 역할
+- `map-project` 는 MAP 프로젝트의 공개 저장소 묶음 이름이다. 일곱 저장소가 같은 접두를 쓴다.
+- `infra` 는 서비스 코드가 아니라 서비스들을 함께 띄우는 구성(compose·관문·DB 준비)을 갖는 저장소라는 뜻이다.
+- 환경변수 접두 `MAP_PROJECT_` 는 여러 서비스가 같은 값을 함께 읽는 값, `USER_`·`AGENT_`·`HUB_`·`YOLO_`·`ADMIN_`·`CLIENT_` 는 그 서비스만 읽는 값이다.
 
-- `docker-compose.yml` — 서비스 스택 (9 services × 5 profiles)
-- `docker-compose.admin.yml` — 관리자 스택 (7 services, `monitoring` 프로파일 분리)
-- `.env.example` 단일 진실원 — 두 스택 모두 `env_file: ./.env` 로 주입
-- `db/init/00-create-schemas.sql` — postgres 첫 부팅 시 schema 4개(`user_service`, `hub_data`, `langgraph`, `admin_data`) 생성 + PostGIS 확장 + `search_path` 설정
-- `db/init/10-admin.sh` — 운영 콘솔용 `map_admin` 역할 생성과 권한(GRANT) 부여. 파일명 순서(00 → 10)대로 실행되어야 한다 — 앞 파일이 만든 스키마에 권한을 걸기 때문이다
-- `scripts/map-{up-1-backend,up-2-bff,up-3-client,down}.sh` — 단계별 로컬 기동·정리 (개발/디버그용)
-- `scripts/map-up-admin.sh` — 관리자 스택 기동(DB 준비 확인 후)
-- `scripts/map-serve{,-down}.sh` — 실기기용 외부 노출(터널 개통 + 앱이 읽는 주소 게시)
-- `proxy/default.conf` — 외부 노출 시 앞에 서는 관문(nginx) 설정
-- `docker-compose.admin.registry.yml` — 관리자 스택을 만들지 않고 받아 쓴다
-- `docker-compose.admin.test.yml` — 관리자 스택을 시험 스택 곁에 세운다(포트·볼륨·네트워크 분리)
-- `scripts/cloud-up.sh` — 클라우드 서버에서 순서대로 띄운다(받기 → 저장소 → 백업 → 표 손질 → 앱 → 콘솔).
-  `--test` 시험 스택 · `--micro` 1GB 급 서버 · `--registry` 만들지 않고 받아 쓰기 ·
-  `--edge` 바깥 노출 · `--dns` 동적 DNS 이름 갱신 · `--routing` 경로 엔진 · `--vision` 카메라 인식 ·
-  `--admin` 운영 콘솔 · `--monitoring` 콘솔 + 지표
-- `scripts/images-push.sh` — 여섯 이미지를 만들어 받아갈 곳에 올린다. 평소에는 사람이
-  직접 부르지 않고 레포의 배포 실행이 부른다
-- `scripts/make-test-env.sh` — 본보기에서만 파생해 시험용 환경파일을 만든다.
-  실제 발급처 키가 시험으로 넘어갈 길을 구조적으로 막는다
-- `scripts/compose-isolation-check.sh` — 운영과 시험이 정말 갈라져 있는지 본다.
-  만들어 쓰는 조합과 받아 쓰는 조합, 콘솔 스택, 그리고 서비스와 콘솔 사이까지
-  다섯 조합을 렌더링한다(서비스↔콘솔은 네트워크를 일부러 공유하므로 그 축만 뺀다)
-- `scripts/sync-client-env.sh` — 앱이 읽는 환경파일을 손으로 적지 않고 만든다
-- `scripts/e2e_full.py` · `scripts/e2e_chat.py` · `scripts/e2e_chat_multidevice.py` —
-  띄운 스택을 실제로 두드려 보는 검증. 사람이 손으로 돌린다
-- `scripts/log_audit.py` — 로그와 지표를 빠짐없이 훑는다. 위 셋이 요청·저장·통신을
-  본다면 이것은 부작용과 침묵을 본다
+## 개요
+
+MAP 는 여행 일정을 추천하는 앱이다. 사용자가 날짜·이동수단·취향을 고르면 장소와 동선, 시간표를 만들어 주고, 함께 가는 사람과 채팅하고, 카메라로 비춘 대상을 알려 준다. 앱(client) 뒤에 사용자 BFF(user)가 있고, 그 뒤에서 추천 에이전트(agent)와 외부 데이터 게이트웨이(hub), 비전 서비스(yolo)가 일한다. 운영 콘솔(admin)은 따로 뜬다.
+
+이 저장소는 그 서비스들을 형제 디렉터리로 받아 한 번에 빌드해 띄운다. 빈 데이터 볼륨에서 DB 역할·스키마·마이그레이션을 순서대로 만들고, 기본값은 외부 유료 API 를 부르지 않는다(모델은 합성 제공자, 외부 데이터는 스텁).
+
+## 아키텍처
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/system-dark.svg">
+  <img alt="전체 시스템: 앱이 관문을 거쳐 user 로 들어오고, user·agent·hub 가 내부 창구로 서로 부르며 postgres·redis 를 쓴다. 비전·경로 엔진·모니터링은 기본으로 꺼져 있다." src="docs/diagrams/system-light.svg">
+</picture>
+
+점선은 기본으로 꺼진 선택 기능이거나 키를 넣을 때만 부르는 외부 서비스다. 처리 순서와 자격 나누기는 [docs/architecture.md](docs/architecture.md), 그림의 근거는 [docs/diagrams/CLAIMS.md](docs/diagrams/CLAIMS.md) 에 있다.
+
+## 기능
+
+- **두 스택**: 서비스 스택(`docker-compose.yml`)과 관리 스택(`docker-compose.admin.yml`). 포트는 모두 `127.0.0.1` 에만 붙는다.
+- **빈 볼륨 빠른 시작**: `scripts/make-local-env.sh` 가 비밀값을 만들고, compose 의 일회성 단계가 DB 를 준비한다. 두 번째 기동부터는 건너뛴다.
+- **관문**: nginx 하나가 여는 경로를 목록으로 정하고, 서비스끼리는 내부 창구로 부른다.
+- **자격 나누기**: 서비스는 제한된 실행 역할로만 DB 에 붙고, 서비스마다 받는 환경변수를 목록으로 정한다.
+- **선택 기능**(기본 꺼짐): 비전(`--profile vision`), 경로 엔진(`--profile routing`), 지표 수집(관리 스택 `--profile monitoring`), HTTPS 앞단 예시(`docker-compose.edge.yml`), 직접 빌드한 이미지 받아 쓰기(`docker-compose.registry.yml`).
+- **시험 스택 격리**: `docker-compose.test.yml` 덧칠과 `scripts/compose-isolation-check.sh` 가 시험 스택이 다른 스택의 볼륨·포트·이름을 쓰지 않는지 본다.
+- **무중단 교체 도구**(교육용): `scripts/service-rollover.py`·`migration-expand-gate.py`·`zd-probe.py`([docs/decisions/0005](docs/decisions/0005-zero-downtime-rollover.md)).
+
+## 빠른 시작 (외부 키·비용 없이)
+
+필요한 것: Docker(Compose v2), git, openssl, 이미지 빌드에 쓸 디스크 여유(수 GB). macOS(Apple Silicon 포함)·Linux 기준이다.
+
+```sh
+# 1) 일곱 저장소를 형제 디렉터리로 받는다(compose 가 ../map-project-<x> 를 빌드한다)
+mkdir map && cd map
+for r in infra user agent hub yolo admin client; do
+  git clone https://github.com/we-meet-trip/map-project-$r
+done
+cd map-project-infra
+
+# 2) .env 를 만든다 — 비밀번호·토큰·암호 열쇠를 이 기계에서만 쓰는 무작위값으로 채운다
+./scripts/make-local-env.sh
+
+# 3) 서비스 스택을 띄운다 — 첫 기동은 이미지 빌드와 DB 준비 단계가 함께 돈다
+docker compose --profile full up -d --build
+
+# 4) 확인 — 일회성 단계는 Exited (0), 서비스는 healthy
+docker compose --profile full ps -a
+curl -s http://127.0.0.1:8090/healthz       # 관문
+curl -s http://127.0.0.1:8090/healthz/app   # 관문 → user
+```
+
+- 상태 확인 주소: user `http://127.0.0.1:8080/actuator/health`, agent `http://127.0.0.1:8000/health/ready`, hub `http://127.0.0.1:8001/health/ready`.
+- 앱은 [map-project-client](https://github.com/we-meet-trip/map-project-client) 의 안내대로 관문 주소(`http://127.0.0.1:8090`, 안드로이드 에뮬레이터는 `http://10.0.2.2:8090`)를 보게 띄운다. 맥에서 단계별로 띄우는 스크립트도 있다(`scripts/map-up-1-backend.sh` → `map-up-2-bff.sh` → `map-up-3-client.sh`, 정리는 `map-down.sh`).
+- 관리 스택(선택): `docker compose -f docker-compose.admin.yml up -d --build` → `http://127.0.0.1:8003`. 첫 로그인은 `.env` 의 `ADMIN_BOOTSTRAP_USER`·`ADMIN_BOOTSTRAP_PASSWORD`.
+- 정리: `docker compose -f docker-compose.admin.yml down -v` 다음 `docker compose --profile full down -v`(이 프로젝트의 볼륨만 지운다).
+- 컨테이너 이름이 `map-project-<서비스>` 로 고정이라 같은 기계에 서비스 스택을 둘 띄울 수 없다.
+
+### 막힐 때
+
+| 보이는 것 | 뜻 | 할 일 |
+|---|---|---|
+| `MAP_PROJECT_LOCATION_WIRE_KEY … is required` | user·agent·hub 가 나눠 갖는 좌표 봉투 열쇠가 없다 | `./scripts/make-local-env.sh --force`(이미 있는 값은 옮겨 온다) |
+| `runtime_role_required`, `migration_secret_in_serving` | user 서빙에 실행 역할이 아닌 자격이 들어갔다 | `.env` 의 `USER_DATABASE_USER=map_user_runtime` 확인 |
+| `{"status":"configuration_rejected"}` | user 부트스트랩·마이그레이션 진입점이 허용 밖 환경변수를 봤다 | compose 를 고치지 않았는지 확인(`db/setup/user-bootstrap.sh`) |
+| 일회성 단계가 Exited (1) | DB 준비가 멈췄다 | `docker compose logs <단계 이름>` — 새로 시작하려면 `down -v` 뒤 다시 |
+
+## 설정
+
+모든 값의 자리와 설명은 [`.env.example`](.env.example) 에 있다. `.env.example` 의 비밀값 자리는 비어 있고 `make-local-env.sh` 가 채운다.
+
+- **로컬 실행용 기본값이다 — 외부에 열기 전에 반드시 인증(`USER_`/`AGENT_`/`HUB_AUTH_ENFORCED`)을 켜고, 서명 열쇠·토큰을 다시 만들고, CORS 출처(`USER_CORS_ALLOWED_ORIGINS`)를 좁힌다.** 관리 콘솔 쿠키도 `ADMIN_SESSION_COOKIE_SECURE=true` 로 둔다.
+- 실제 모델을 쓰려면 `AGENT_LLM_PROVIDER=gemini` 와 `MAP_PROJECT_GEMINI_API_KEY` 를 넣는다. 실제 외부 데이터를 쓰려면 hub 의 키(`MAP_PROJECT_KMA_SERVICE_KEY`·`MAP_PROJECT_KAKAO_REST_API_KEY` 등)를 넣는다. 키를 넣는 순간부터 그 발급처의 한도·요금이 적용된다.
+- 이름 체계와 공유 비밀값은 [docs/contracts.md](docs/contracts.md).
+
+## 데이터
+
+이 저장소는 데이터를 담지 않는다. 경로 엔진 그래프(OpenStreetMap, ODbL)와 성향 통계 파일의 받는 법·이용조건·한계는 [docs/data.md](docs/data.md).
+
+## API와 계약
+
+각 서비스의 API 는 그 저장소의 문서가 정한다. 이 저장소가 정하는 포트·관문 경로·환경변수 이름·공유 비밀값·이미지 이름은 [docs/contracts.md](docs/contracts.md).
 
 ## 폴더 구조
 
-```
-map-service-infra/
-├── .env.example                  환경변수 템플릿
-├── docker-compose.yml            서비스 스택 (9 services + 5 profiles)
-├── docker-compose.admin.yml      관리자 스택 (7 services)
-├── docker-compose.admin.registry.yml  관리자 스택 받아 쓰기
-├── docker-compose.admin.test.yml      관리자 스택 시험 덧칠
-├── db/
-│   └── init/
-│       ├── 00-create-schemas.sql 첫 부팅 시 자동 실행 (schema 4개 + PostGIS + search_path)
-│       └── 10-admin.sh           map_admin 역할·권한 (00 다음에 실행)
-├── monitoring/
-│   ├── prometheus/prometheus.yml 스크레이프 대상
-│   └── grafana/                  데이터소스·대시보드 프로비저닝
-├── proxy/
-│   └── default.conf              외부 노출 관문(nginx) 설정
-└── scripts/
-    ├── map-up-1-backend.sh       Stage1: postgres·redis·hub·agent 기동
-    ├── map-up-2-bff.sh           Stage2: user-BFF 로컬 실행(gradlew bootRun)
-    ├── map-up-3-client.sh        Stage3: 에뮬레이터 + flutter run
-    ├── map-up-admin.sh           관리자 스택 기동(콘솔 / --monitoring)
-    ├── map-serve.sh              실기기용 외부 노출(터널 + 주소 게시)
-    ├── map-serve-down.sh         외부 노출만 종료(스택 유지)
-    ├── map-down.sh               전체 정리(데이터 볼륨 보존)
-    ├── osrm-rebuild.sh           라우팅 그래프 빌드
-    └── pg-backup.sh              DB 덤프 백업
+```text
+docker-compose.yml            서비스 스택(프로필 infra·backend·full·vision·routing)
+docker-compose.admin.yml      관리 스택(monitoring 프로필)
+docker-compose.test.yml       시험 스택 덧칠(포트·볼륨·네트워크·이름을 따로)
+docker-compose.registry.yml   직접 빌드한 이미지 받아 쓰기(서비스·관리 각각)
+docker-compose.edge.yml       HTTPS 앞단 예시(Caddy, example.com 자리표시)
+.env.example                  설정 본보기(비밀값 자리는 비어 있다)
+db/setup/                     빈 DB 준비 단계(setup.sh, 스키마·관리 콘솔 역할 SQL, user 부트스트랩 감싸기)
+proxy/                        nginx 관문 설정, 교체 중 상류 자리(upstreams/)
+edge/                         Caddy 설정 예시
+monitoring/                   prometheus·grafana 설정
+scripts/                      비밀값 생성·로컬 기동·격리 검사·e2e·OSRM 빌드·무중단 교체·다이어그램 렌더
+segstats/                     성향 통계 파일을 두는 자리(파일은 담지 않는다)
+tests/                        단위 시험(표준 라이브러리, compose 렌더)
+docs/                         구조·데이터·계약·트러블슈팅·결정 기록·다이어그램
 ```
 
-## profiles (서비스 스택)
+## 테스트
 
-| profile | 포함 service | 비고 |
-|---|---|---|
-| `infra` | postgres · redis | |
-| `backend` | user · agent · hub · proxy | |
-| `full` | 위 전부 | |
-| `vision` | yolo | `full` 미포함. 카메라 인식을 쓸 때만 |
-| `routing` | osrm-foot · osrm-bicycle | `full` 미포함. `map-serve.sh` 가 함께 올린다(실패해도 나머지는 열린다) |
-
-관리자 스택은 admin·admin-web 이 프로파일 없이 항상 뜨고, 모니터링 5종만 `monitoring` 프로파일이다.
-
-## 실행
-
-compose 명령은 macOS · Windows WSL2 · Linux 어디서나 같다. 다만 아래 `scripts/` 는 macOS 전제다(adb 경로·`open -a Docker`·`caffeinate`).
-
-```bash
-cd map-service-infra
-cp .env.example .env                              # API 키 주입
-
-# 서비스 스택 — hub 스키마는 자동 생성되지 않으므로 인프라 → 마이그레이션 → 앱 순서로 띄운다
-docker compose --profile infra up -d
-docker compose run --rm --no-deps --entrypoint alembic hub upgrade head
-docker compose --profile full up -d --build
-docker compose --profile full --profile vision up -d --build   # 카메라 인식까지
-docker compose --profile routing up -d osrm-foot osrm-bicycle   # 도로 추종 경로까지
-
-# 관리자 스택 (서비스 스택이 뜬 뒤에)
-./scripts/map-up-admin.sh                # 콘솔만
-./scripts/map-up-admin.sh --monitoring   # 콘솔 + 지표
-
-# 검증
-curl -s http://127.0.0.1:8080/actuator/health     # user
-curl -s http://127.0.0.1:8000/health              # agent
-curl -s http://127.0.0.1:8001/health              # hub
-curl -s http://127.0.0.1:8004/health              # yolo (vision 프로파일)
-curl -s http://127.0.0.1:8002/health              # admin (관리자 스택)
-curl -s http://127.0.0.1:8090/healthz             # 관문
-curl -s "http://127.0.0.1:5000/nearest/v1/foot/126.9780,37.5665"     # 경로 엔진 도보
-curl -s "http://127.0.0.1:5001/nearest/v1/bicycle/126.9780,37.5665"  # 경로 엔진 자전거
-docker compose exec postgres pg_isready -U map
-docker compose exec redis    redis-cli ping
-docker compose exec postgres psql -U map -c "\dn" # 도메인 스키마 4개 + public = 5행
+```sh
+python3 -m unittest discover -s tests -v       # 단위 시험(외부 네트워크 없음, Docker 가 있으면 compose 렌더 시험도 돈다)
+./scripts/make-local-env.sh --force && ./scripts/make-test-env.sh --force
+./scripts/compose-isolation-check.sh           # 시험 스택 격리
 ```
 
-## 카메라 인식 (vision)
+CI(`.github/workflows/ci.yml`)는 파이썬 3.11·3.12·3.13 에서 단위 시험을 돌리고, compose 조합 렌더·관문 설정 문법·격리·본보기 비밀값 자리를 본다. 비밀값과 외부 키를 쓰지 않는다.
 
-폰 카메라로 대상을 비추고 물어보면 무엇인지 답해 주는 기능이다. 클라이언트가 관문의 `/ws/vision` 으로 WebSocket 을 맺고, 관문이 이를 `yolo` 로 넘긴다.
+시험 스택(`--env-file ./.env.test -f docker-compose.yml -f docker-compose.test.yml`)을 띄운 뒤에는 `BASE=http://127.0.0.1:8290 E2E_PASSWORD=<.env.test 의 USER_TESTER_SEED_PASSWORD> ./scripts/e2e.sh` 로 시험 스택 관문 너머를 훑는다.
 
-```bash
-docker compose --profile vision up -d --build yolo
-docker compose restart proxy      # 관문 설정을 바꾼 뒤에만 필요
-```
+## 트러블슈팅과 교훈
 
-- 이미지에 추론 라이브러리가 들어가 무겁다(최초 빌드만 오래 걸리고 이후는 캐시). 그래서 `full` 이 아니라 `vision` 프로파일로 갈라 두었다.
-- 모델 가중치는 이미지 빌드 시 내장되므로 기동에 네트워크가 필요 없다.
-- 이 서비스는 자체 인증이 없다. 관문에서 접속 시도 횟수와 동시 연결 수만 제한한다.
-- `yolo` 가 떠 있지 않아도 관문은 정상 기동하며, 그 경로만 502 를 준다.
-- 호출 한도를 agent 와 나누고 싶지 않다면 `.env` 의 `VISION_GEMINI_API_KEY` 에 별도 키를 채운다(비우면 공용 키를 쓴다).
+[docs/troubleshooting.md](docs/troubleshooting.md) 에 증상·원인·해결·교훈을 모았다. 몇 가지:
 
-## 도로 추종 경로 (routing)
+- 본보기만 복사하면 서비스가 붙을 DB 역할이 없었다 → 빈 볼륨 준비 사슬(T-INFRA-01). PostGIS 이미지는 첫 부팅에 확장을 깔아 "빈 DB" 를 빈 DB 가 아니게 만든다(T-INFRA-02).
+- 상태 확인이 보는 길과 실제 작업이 쓰는 길이 다르면, 상태 확인은 그 고장을 보지 못한다(T-INFRA-04).
+- 이름을 합칠지 나눌지는 이름이 아니라 "같은 값을 읽는가" 로 정한다(T-INFRA-16).
 
-화면의 이동 경로를 실제 도로 모양으로 그리는 기능이다. BFF 가 hub 의 `/v1/directions/batch` 를 부르고, hub 가 도보·자전거 두 엔진에 물어본다.
+설계 결정은 [docs/decisions/](docs/decisions/).
 
-```bash
-./scripts/osrm-rebuild.sh                          # 그래프 빌드(최초 1회, 오래 걸린다)
-docker compose --profile routing up -d osrm-foot osrm-bicycle
-```
+## 한계
 
-- 엔진은 미리 만들어 둔 그래프 파일을 읽어야 뜬다. 그래서 `full` 이 아니라 `routing` 프로파일로 갈라 두었다 — 그래프가 없는 환경에서 스택 전체 기동이 막히지 않게 하기 위해서다.
-- `.env` 의 `OSRM_FOOT_BASE_URL` · `OSRM_BICYCLE_BASE_URL` 이 채워져 있어야 hub 가 엔진을 부른다. 비어 있으면 엔진이 떠 있어도 hub 자체 대체 경로를 쓴다.
-- 엔진이 없으면 hub 가 해당 구간을 비워 응답하고, BFF 는 그 구간을 두 점 잇는 직선으로 접는다. 앱은 그 상태로도 끝까지 동작하므로 겉으로는 정상처럼 보인다.
-- hub 는 성공한 경로만 이레 동안 캐시에 담는다. 그래서 엔진이 빠진 뒤에도 이미 담긴 구간은 계속 도로를 따라가고, 새 구간만 직선이 된다.
-- `map-serve.sh` 는 이 프로파일을 함께 올리고 준비 여부를 알려 준다. 기동에 실패해도 나머지 노출 절차는 그대로 진행된다.
+- 이 저장소는 이미지를 게시하지 않는다. 받아 쓰기 덧칠은 직접 빌드해 올린 레지스트리를 적어야 한다.
+- 비전(yolo)은 모델 키가 필요하고, 경로 엔진은 그래프를 직접 만들어야 한다. 둘 다 기본으로 꺼져 있다.
+- 합성 LLM 제공자의 추천은 결정적인 예시 결과다(결과에 synthetic 표시). 실제 추천 품질은 실제 모델에서만 나온다.
+- Windows 는 확인하지 않았다.
 
-## 단계별 기동 (로컬 개발·디버그)
+## 감사 표시
 
-`docker compose --profile full up`(전체 컨테이너)과 달리, BFF를 **호스트 JVM(`gradlew bootRun`)**으로
-띄우고 agent·hub·postgres·redis만 컨테이너로 두는 **반복 개발용 토폴로지**다.
+- 다이어그램은 Graphviz 로 그리고 Pretendard 글꼴(SIL OFL 1.1)로 표시한다. 글꼴 파일은 저장소에 넣지 않는다.
 
-| 스크립트 | 단계 | 실행 형태 |
-|---|---|---|
-| `map-up-1-backend.sh` | postgres·redis·hub·agent 기동(`--no-deps`, 시드 확인, 헬스 게이트) | 준비되면 종료 |
-| `map-up-2-bff.sh` | user-BFF `gradlew bootRun`(도커 호스트 포트로 연결) | 포그라운드(Ctrl+C 종료) |
-| `map-up-3-client.sh` | Android 에뮬레이터 부팅 + `flutter run`(`API_BASE_URL=10.0.2.2:8080`) | 포그라운드(`q` 종료) |
-| `map-down.sh` | 앱·BFF·두 스택 정리(데이터 볼륨 보존) | 1회 실행 |
+## 고지
 
-```bash
-# 터미널 3개 권장 (Stage 2·3은 포그라운드로 점유)
-cd map-service-infra
-./scripts/map-up-1-backend.sh     # 터미널 A — 끝나면 프롬프트 복귀
-./scripts/map-up-2-bff.sh         # 터미널 B — "Started ServiceUserApplication" 대기
-./scripts/map-up-3-client.sh      # 터미널 C — 에뮬레이터에 앱 표시
+- 이 저장소는 교육·학습 목적으로 공개한 코드다. 운영 중인 서비스가 아니며 지원을 약속하지 않는다.
+- 이 프로젝트는 코드가 연동하는 외부 서비스·데이터 제공자(한국관광공사, 기상청, 공공데이터포털, 국토교통부, 서울특별시, 한국환경공단, 카카오, 네이버, Google, Apple, LangChain, ODsay, OpenStreetMap, Ultralytics, Wikimedia 등)와 관련이 없으며, 그들로부터 승인이나 후원을 받지 않았다. 언급한 상표와 서비스 이름은 각 소유자에게 있다.
+- 저장소에는 제3자 데이터·이미지·본문을 넣지 않는다. 예외로, 이용조건을 원문으로 확인한 공공·개방 자료만 출처와 이용조건을 밝혀 담는다(`docs/data.md`). 그 밖의 외부 데이터는 각 제공자의 약관에 따라 직접 받아야 한다.
+- MIT 라이선스는 이 저장소의 코드에만 적용된다. 저장소에 담은 공공·개방 자료와 외부 데이터, 모델 가중치, 폰트, 라이브러리는 각자의 이용조건·라이선스를 따른다.
 
-./scripts/map-down.sh             # 정리(컨테이너·네트워크 제거, 데이터 볼륨 유지)
-```
+## 라이선스
 
-- 추가 사전 준비: `.env`의 유효한 `GEMINI_API_KEY`, Android 에뮬레이터(`Pixel_7`), Flutter SDK. `AUTH_ENFORCED=true` 로 올릴 때만 `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY` 필요
-- 이 흐름은 경로 엔진을 올리지 않는다. 도로 모양 경로가 필요하면 `--profile routing up -d osrm-foot osrm-bicycle` 를 따로 낸다(안 올리면 화면의 경로가 직선이 된다). 날씨는 KMA 적재 상태에 따라 빈 배열일 수 있음(정상 동작)
-- BFF가 호스트 JVM이라 컨테이너 기동(`--profile full up`)과 토폴로지가 다름에 유의
-
-## 실기기용 외부 노출
-
-이 맥의 스택을 폰에서 쓸 수 있게 여는 흐름이다. `--profile full`(BFF 도 컨테이너)
-전제이며, BFF 를 호스트 JVM 으로 띄우는 위 개발 흐름과는 같이 쓸 수 없다 —
-관문이 컨테이너 이름으로 BFF 를 찾기 때문이다.
-
-```bash
-./scripts/map-serve.sh            # 스택(full+vision+routing) 기동 → 관문 확인 → 터널 개통 → 주소 게시
-./scripts/map-serve-down.sh       # 노출만 종료(스택은 유지)
-```
-
-- 게시 대상은 `map-service-client/hosting/` 이다. 주소 파일은 `map-serve.sh` 가 그 디렉터리에 직접 쓰므로 이 절차에 사전 빌드가 필요 없다.
-- 브라우저로도 쓰려면 웹앱을 따로 올려야 한다. 반드시 `map-service-client/tool/build_web.sh` 로 빌드한다 — `flutter build web` 을 직접 돌리면 서버용 키가 담긴 실행 설정이 자산으로 실려 그대로 공개된다. 배포 전 훅 `check_app_config.sh` · `check_web_secrets.sh` 가 그 경우를 막는다.
-
-- 앱은 시작할 때 고정된 위치에서 현재 서버 주소를 읽는다. 터널 주소가 바뀌면
-  이 스크립트를 다시 돌리는 것으로 끝나고, 앱을 다시 만들거나 깔지 않는다.
-- 관문(8090)은 여는 경로를 목록으로 못박고 `/actuator` 를 막으며 일정 생성과
-  카메라 인식 접속에 IP 당 호출 상한을 건다. 주소를 아는 사람은 누구나 닿을 수
-  있으므로 BFF 를 그대로 노출하지 않는다.
-- 터널은 원본 응답을 120초까지만 기다린다. 그보다 오래 걸리는 요청은 끊긴다.
-
-## 운영 콘솔 + 모니터링 (관리자 스택)
-
-- **admin(8002)** — 운영 콘솔 JSON API. **admin-web(8003)** — React SPA(nginx,
-  `/api` → admin 프록시). 브라우저는 `http://127.0.0.1:8003/` 로 접속(SPA 로그인).
-  최초 계정은 `.env` 의 `ADMIN_BOOTSTRAP_USER`/`ADMIN_BOOTSTRAP_PASSWORD` 로 시드된다.
-- **모니터링** — `prometheus`(9090)·`grafana`(3000)·`postgres-exporter`·
-  `redis-exporter`·`node-exporter`. 관리자 스택 안에서도 `monitoring` 프로파일로
-  갈라 두어, 콘솔만 필요할 때는 띄우지 않는다. 전 포트 loopback, 이미지는 multi-arch(arm64 OK).
-
-```bash
-# 서비스 스택이 떠 있는 상태에서
-./scripts/map-up-admin.sh --monitoring
-# Grafana: http://127.0.0.1:${GRAFANA_PORT:-3000}  (GF_SECURITY_ADMIN_USER/PASSWORD, .env)
-# Prometheus: http://127.0.0.1:9090
-```
-
-- Prometheus 는 hub/agent/admin/yolo `/metrics` 와 user `/actuator/prometheus`,
-  exporter 3종을 30s 간격으로 스크레이프한다(보존 10d/2GB — `docker-compose.admin.yml`
-  prometheus command 플래그). 서비스 스택이 내려가 있으면 해당 타깃만 down 으로
-  표시되고 수집 자체는 계속된다. Grafana 데이터소스·대시보드(서비스 개요·인프라)는
-  `monitoring/grafana/provisioning` 으로 코드 프로비저닝된다.
-- admin 콘솔의 "모니터링" 화면은 `MONITORING_PANELS`(.env) 로 지정한 Grafana URL 을
-  iframe/링크로 임베드한다(Grafana `GF_SECURITY_ALLOW_EMBEDDING=true` + anonymous
-  Viewer 전제 — loopback 한정).
-- `.env` 추가 키: `GF_SECURITY_ADMIN_USER`, `GF_SECURITY_ADMIN_PASSWORD`, `GRAFANA_PORT`(호스트 포트, 기본 3000).
-- `MONITORING_PANELS` 와 `ADMIN_CORS_ORIGINS` 는 JSON 복합 타입이라 **비우려면 키를 주석 처리해야 한다.** `KEY=` 로 빈 값을 남기면 admin 이 `SettingsError` 로 뜨지 못한다.
-
-## 사전 준비
-
-- Docker (Desktop 또는 Engine), `docker compose` v2
-- 호스트 RAM 8GB+, 디스크 10GB+ 여유 (`vision` 프로파일을 쓰면 이미지가 커져 여유가 더 필요하고, `routing` 그래프는 볼륨에 7GB 가까이 더 쓴다)
-- 호스트 OS 절전·자동업데이트·화면 잠금 비활성화 권장
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+코드는 [MIT 라이선스](LICENSE)를 따른다. Copyright (c) The MAP Contributors. 만든 사람들은 [AUTHORS.md](AUTHORS.md) 에 있다.
