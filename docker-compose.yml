@@ -102,9 +102,8 @@ services:
     restart: "no"
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    # 준비 단계가 이번에 새로 연 경우에만 돈다. 이미 끝난 DB 에서 다시 돌면 거절되기 때문이다.
-    # 부트스트랩 진입점은 정해진 이름 밖의 환경변수가 있으면 멈추므로, 셸이 남기는 변수를 지우고 실행한다.
-    entrypoint: ["sh", "-c", "[ -f /state/user-bootstrap.pending ] || { echo 'user 부트스트랩: 이미 끝남 — 건너뜀'; exit 0; }; exec /usr/bin/env -u PWD -u OLDPWD -u SHLVL -u _ java -Xmx192m -Dloader.main=map.bootstrap.UserBootstrapApplication -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher bootstrap"]
+    # 감싸기 스크립트가 건너뛰기 검사와 허용 이름 밖 환경변수 정리를 한 뒤 진입점을 부른다.
+    entrypoint: ["sh", "/setup/user-bootstrap.sh"]
     environment:
       USER_BOOTSTRAP_URL: jdbc:postgresql://postgres:5432/${MAP_PROJECT_POSTGRES_DB}
       USER_BOOTSTRAP_USERNAME: map_user_bootstrap
@@ -112,6 +111,7 @@ services:
       USER_BOOTSTRAP_PASSWORD:
       USER_BOOTSTRAP_MARKER:
     volumes:
+      - ./db/setup:/setup:ro
       - db-setup-state:/state:ro
     depends_on:
       db-user-prepare:
