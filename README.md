@@ -129,6 +129,8 @@ python3 -m unittest discover -s tests -v       # 단위 시험(외부 네트워�
 ./scripts/compose-isolation-check.sh           # 시험 스택 격리
 ```
 
+`tests/test_db_setup_psql.py` 는 빈 postgis 임시 컨테이너에서 DB 준비 단계의 psql 부분을 실제로 돌린다. 로컬에 `postgis/postgis:17-3.5` 이미지와 형제 레포(user·hub·agent)가 있을 때만 돌고, 없으면 건너뛴다.
+
 CI(`.github/workflows/ci.yml`)는 파이썬 3.11·3.12·3.13 에서 단위 시험을 돌리고, compose 조합 렌더·관문 설정 문법·격리·본보기 비밀값 자리를 본다. 비밀값과 외부 키를 쓰지 않는다.
 
 시험 스택(`--env-file ./.env.test -f docker-compose.yml -f docker-compose.test.yml`)을 띄운 뒤에는 `BASE=http://127.0.0.1:8290 E2E_PASSWORD=<.env.test 의 USER_TESTER_SEED_PASSWORD> ./scripts/e2e.sh` 로 시험 스택 관문 너머를 훑는다.
